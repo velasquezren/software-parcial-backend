@@ -37,4 +37,6 @@ public interface DocumentoService {
     List<Documento> buscarDocumentos(String nombre);
 
     List<Documento> listarTodos();
+
+    Documento gestionarColaboradores(String id, String colaborador, String accion, String usuario);
 }

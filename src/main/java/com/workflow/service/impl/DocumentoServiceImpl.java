@@ -208,6 +208,14 @@ public class DocumentoServiceImpl implements DocumentoService {
             throw new IllegalArgumentException("No se puede actualizar contenido en línea de un documento de tipo FILE.");
         }
 
+        boolean esCreador = documento.getCreadoPor() == null || documento.getCreadoPor().equalsIgnoreCase(usuario);
+        boolean esColaborador = documento.getColaboradores() != null && 
+                                 documento.getColaboradores().stream().anyMatch(c -> c.equalsIgnoreCase(usuario));
+
+        if (!esCreador && !esColaborador) {
+            throw new UnauthorizedActionException(usuario, "editar este documento porque no es el propietario ni un colaborador autorizado.");
+        }
+
         if (documento.getBloqueadoPor() != null && !documento.getBloqueadoPor().equalsIgnoreCase(usuario)) {
             throw new UnauthorizedActionException(usuario, "editar el documento en línea porque está bloqueado por " + documento.getBloqueadoPor());
         }
@@ -221,6 +229,15 @@ public class DocumentoServiceImpl implements DocumentoService {
     @Override
     public Documento bloquearDocumento(String id, String usuario) {
         Documento documento = obtenerPorId(id);
+
+        boolean esCreador = documento.getCreadoPor() == null || documento.getCreadoPor().equalsIgnoreCase(usuario);
+        boolean esColaborador = documento.getColaboradores() != null && 
+                                 documento.getColaboradores().stream().anyMatch(c -> c.equalsIgnoreCase(usuario));
+
+        if (!esCreador && !esColaborador) {
+            throw new UnauthorizedActionException(usuario, "bloquear este documento para edición porque no tiene permisos de colaboración (propietario o colaborador).");
+        }
+
         if (documento.getBloqueadoPor() != null) {
             if (documento.getBloqueadoPor().equalsIgnoreCase(usuario)) {
                 return documento; // Ya lo tiene bloqueado él mismo
@@ -305,6 +322,39 @@ public class DocumentoServiceImpl implements DocumentoService {
     @Override
     public List<Documento> listarTodos() {
         return repository.findAll();
+    }
+
+    @Override
+    public Documento gestionarColaboradores(String id, String colaborador, String accion, String usuario) {
+        Documento documento = obtenerPorId(id);
+
+        // Solo el propietario original (creadoPor) puede gestionar colaboradores
+        if (documento.getCreadoPor() != null && !documento.getCreadoPor().equalsIgnoreCase(usuario)) {
+            throw new UnauthorizedActionException(usuario, "gestionar colaboradores en este documento. Solo el propietario (" + documento.getCreadoPor() + ") está autorizado.");
+        }
+
+        if (documento.getColaboradores() == null) {
+            documento.setColaboradores(new ArrayList<>());
+        }
+
+        if ("AGREGAR".equalsIgnoreCase(accion)) {
+            // No agregarse a sí mismo como colaborador (ya es propietario), ni duplicar
+            if (!colaborador.equalsIgnoreCase(documento.getCreadoPor()) && 
+                documento.getColaboradores().stream().noneMatch(c -> c.equalsIgnoreCase(colaborador))) {
+                documento.getColaboradores().add(colaborador);
+            }
+        } else if ("QUITAR".equalsIgnoreCase(accion)) {
+            documento.getColaboradores().removeIf(c -> c.equalsIgnoreCase(colaborador));
+        }
+
+        Documento guardado = repository.save(documento);
+        log.info("Colaboradores actualizados para documento {} por propietario {}. Lista actual: {}", id, usuario, guardado.getColaboradores());
+
+        registrarEventoEnSolicitud(documento.getSolicitudId(), usuario, 
+                String.format("Colaboradores modificados en documento '%s' (%s %s)", 
+                        documento.getNombre(), accion, colaborador));
+
+        return guardado;
     }
 
     private void validarSolicitudExiste(String solicitudId) {

@@ -59,6 +59,9 @@ public class Documento {
     private String contenidoColaborativo; // Contenido de texto enriquecido si es de tipo "COLLABORATIVE"
 
     @Builder.Default
+    private List<String> colaboradores = new ArrayList<>();
+
+    @Builder.Default
     private List<VersionDocumento> versiones = new ArrayList<>();
 
     @Data

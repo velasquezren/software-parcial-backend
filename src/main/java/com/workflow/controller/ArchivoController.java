@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -60,15 +61,23 @@ public class ArchivoController {
      * Descarga un archivo por su ID (nombre almacenado).
      */
     @GetMapping("/{archivoId}")
-    @Operation(summary = "Descargar archivo", description = "Descarga un archivo adjunto por su ID.")
-    public ResponseEntity<Resource> descargarArchivo(@PathVariable String archivoId) {
-        log.info("GET /api/v1/archivos/{}", archivoId);
+    @Operation(summary = "Descargar/Visualizar archivo", description = "Obtiene un archivo adjunto por su ID. Por defecto lo sirve en modo inline a menos que se especifique download=true.")
+    public ResponseEntity<Resource> descargarArchivo(
+            @PathVariable String archivoId,
+            @RequestParam(value = "download", defaultValue = "false") boolean download) {
+        log.info("GET /api/v1/archivos/{} (download={})", archivoId, download);
 
         // Search for file with any extension
         Resource resource = storageService.cargarArchivo(archivoId);
 
+        MediaType contentType = MediaTypeFactory.getMediaType(resource)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+        String disposition = download ? "attachment" : "inline";
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .contentType(contentType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
 

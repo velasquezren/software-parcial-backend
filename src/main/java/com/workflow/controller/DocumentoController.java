@@ -127,6 +127,18 @@ public class DocumentoController {
         return ResponseEntity.ok(ApiResponse.ok("Documento liberado exitosamente", doc));
     }
 
+    @PatchMapping("/{id}/colaboradores")
+    @Operation(summary = "Gestionar colaboradores del documento", description = "Agrega o elimina un colaborador. Solo permitido para el propietario.")
+    public ResponseEntity<ApiResponse<Documento>> gestionarColaboradores(
+            @PathVariable String id,
+            @RequestParam("colaborador") String colaborador,
+            @RequestParam("accion") String accion, // AGREGAR o QUITAR
+            @RequestHeader("X-Usuario") String usuario) {
+        log.info("PATCH /api/v1/documentos/{}/colaboradores?colaborador={}&accion={} - Por {}", id, colaborador, accion, usuario);
+        Documento doc = documentoService.gestionarColaboradores(id, colaborador, accion, usuario);
+        return ResponseEntity.ok(ApiResponse.ok("Colaboradores actualizados exitosamente", doc));
+    }
+
     @PatchMapping("/{id}/asociar")
     @Operation(summary = "Asociar documento a una tarea/solicitud", description = "Vincula el documento al ID de la solicitud física o de la etapa BPMN.")
     public ResponseEntity<ApiResponse<Documento>> asociarDocumento(
