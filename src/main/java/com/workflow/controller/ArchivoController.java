@@ -125,13 +125,14 @@ public class ArchivoController {
     /**
      * Descarga un archivo por su ID (nombre almacenado).
      */
-    @GetMapping("/{archivoId}")
+    @GetMapping("/{*archivoId}")
     @Operation(summary = "Descargar archivo", description = "Descarga un archivo adjunto por su ID.")
     public ResponseEntity<Resource> descargarArchivo(@PathVariable String archivoId) {
-        log.info("GET /api/v1/archivos/{}", archivoId);
+        String cleanId = (archivoId != null && archivoId.startsWith("/")) ? archivoId.substring(1) : archivoId;
+        log.info("GET /api/v1/archivos/{}", cleanId);
 
         // Search for file with any extension
-        Resource resource = storageService.cargarArchivo(archivoId);
+        Resource resource = storageService.cargarArchivo(cleanId);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
