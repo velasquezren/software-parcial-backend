@@ -40,6 +40,12 @@ app:
     dir: ./uploads
   gcp:
     bucket-name: ${GCS_BUCKET_NAME:parcial-2-software-bucket}
+  aws:
+    s3:
+      bucket-name: ${AWS_S3_BUCKET_NAME:parcial-bucket-segundo}
+      region: ${AWS_REGION:us-east-2}
+      access-key: ${AWS_ACCESS_KEY_ID:}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:}
   cors:
     allowed-origins: http://localhost:4200
   firebase:
