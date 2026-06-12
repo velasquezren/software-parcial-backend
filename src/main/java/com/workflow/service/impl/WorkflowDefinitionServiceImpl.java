@@ -250,6 +250,7 @@ public class WorkflowDefinitionServiceImpl implements WorkflowDefinitionService 
             existing.setEditadoPor(usuario);
             existing.setDepartamentoEditor(departamento);
             existing.setComentario(def.getComentario() != null ? def.getComentario() : "Modificación de workflow");
+            existing.setFormularios(def.getFormularios() != null ? def.getFormularios() : existing.getFormularios());
             existing.setVersion(existing.getVersion() + 1);
             return repository.save(existing);
         } else {

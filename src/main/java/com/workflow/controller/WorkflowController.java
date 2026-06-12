@@ -436,11 +436,13 @@ public class WorkflowController {
             @RequestParam String workflowDefinitionId,
             @RequestParam String tareaId,
             @RequestParam String tareaNombre,
-            @RequestHeader(value = "X-Usuario", required = false, defaultValue = "anonimo") String usuario,
-            @RequestHeader(value = "X-Rol", required = false, defaultValue = "REVISOR") String rol
+            @RequestHeader(value = "X-Usuario", required = false) String usuario,
+            @RequestHeader(value = "X-Rol", required = false) RolUsuario rol,
+            @RequestHeader(value = "X-Departamento", required = false) String departamentoUsuario
     ) {
+        validarContextoConDepartamentoSiRevisor(usuario, rol, departamentoUsuario);
         log.info("PATCH /api/v1/workflows/{}/bpm-proceso - Iniciando proceso {} en {}", id, workflowDefinitionId, tareaId);
-        SolicitudResponse actualizada = workflowService.asociarProcesoBpm(id, workflowDefinitionId, tareaId, tareaNombre, usuario, rol);
+        SolicitudResponse actualizada = workflowService.asociarProcesoBpm(id, workflowDefinitionId, tareaId, tareaNombre, usuario, rol, departamentoUsuario);
         return ResponseEntity.ok(ApiResponse.ok("Proceso BPMN iniciado exitosamente en la tarea: " + tareaNombre, actualizada));
     }
 
@@ -451,11 +453,13 @@ public class WorkflowController {
             @RequestParam String flowId,
             @RequestParam String tareaId,
             @RequestParam String tareaNombre,
-            @RequestHeader(value = "X-Usuario", required = false, defaultValue = "anonimo") String usuario,
-            @RequestHeader(value = "X-Rol", required = false, defaultValue = "REVISOR") String rol
+            @RequestHeader(value = "X-Usuario", required = false) String usuario,
+            @RequestHeader(value = "X-Rol", required = false) RolUsuario rol,
+            @RequestHeader(value = "X-Departamento", required = false) String departamentoUsuario
     ) {
+        validarContextoConDepartamentoSiRevisor(usuario, rol, departamentoUsuario);
         log.info("PATCH /api/v1/workflows/{}/bpm-tarea - Moviendo a tarea {} ({}) en flow {}", id, tareaId, tareaNombre, flowId);
-        SolicitudResponse actualizada = workflowService.cambiarTareaBpm(id, flowId, tareaId, tareaNombre, usuario, rol);
+        SolicitudResponse actualizada = workflowService.cambiarTareaBpm(id, flowId, tareaId, tareaNombre, usuario, rol, departamentoUsuario);
         return ResponseEntity.ok(ApiResponse.ok("Solicitud movida exitosamente a: " + tareaNombre, actualizada));
     }
 

@@ -9,8 +9,9 @@ RUN chmod +x mvnw && sed -i 's/\r$//' mvnw
 RUN ./mvnw dependency:go-offline -B
 # Copiar código fuente
 COPY src/ src/
-# Compilar proyecto saltando tests
-RUN ./mvnw clean package -DskipTests
+# Compilar proyecto saltando tests y extraer capas con layertools
+RUN ./mvnw clean package -DskipTests && \
+    java -Djarmode=layertools -jar target/workflow-backend-*.jar extract --destination target/extracted
 
 # Runtime Stage
 FROM eclipse-temurin:17-jre-alpine
@@ -23,18 +24,25 @@ RUN addgroup -S spring && adduser -S spring -G spring && \
 
 USER spring:spring
 
-# Copiar el jar compilado (usando un patrón más específico si es posible, o renombrándolo en el builder)
-COPY --chown=spring:spring --from=builder /app/target/workflow-backend-*.jar app.jar
+# Copiar las capas de forma individual para aprovechar al máximo la caché de capas de Docker
+COPY --chown=spring:spring --from=builder /app/target/extracted/dependencies/ ./
+COPY --chown=spring:spring --from=builder /app/target/extracted/spring-boot-loader/ ./
+COPY --chown=spring:spring --from=builder /app/target/extracted/snapshot-dependencies/ ./
+COPY --chown=spring:spring --from=builder /app/target/extracted/application/ ./
 
-# Variables de Enteorno por defecto (A ser sobrescritas por Google Cloud Run)
+# Variables de Entorno por defecto (A ser sobrescritas por Google Cloud Run)
 ENV PORT=8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
 EXPOSE 8080
 
+# Parámetros optimizados de JVM para entornos Serverless de baja memoria (<=2GB RAM)
+# Se incluye -XX:+UseSerialGC y -XX:+OptimizeStringConcat
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
   "-XX:MaxRAMPercentage=75.0", \
   "-XX:InitialRAMPercentage=50.0", \
+  "-XX:+UseSerialGC", \
+  "-XX:+OptimizeStringConcat", \
   "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+  "org.springframework.boot.loader.launch.JarLauncher"]

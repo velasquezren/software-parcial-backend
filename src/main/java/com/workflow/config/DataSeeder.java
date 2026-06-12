@@ -13,6 +13,11 @@ import com.workflow.repository.SolicitudWorkflowRepository;
 import com.workflow.repository.UsuarioRepository;
 import com.workflow.repository.DocumentoRepository;
 import com.workflow.repository.WorkflowDefinitionRepository;
+import com.workflow.repository.DiagramaBpmnRepository;
+import com.workflow.repository.ReporteRepository;
+import com.workflow.repository.UserDeviceTokenRepository;
+import com.workflow.repository.WorkflowCoreEventRepository;
+import com.workflow.repository.WorkspaceGraphStateRepository;
 import com.workflow.service.CodigoSeguimientoGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,293 +37,391 @@ public class DataSeeder implements CommandLineRunner {
     private final DepartamentoRepository departamentoRepository;
     private final DocumentoRepository documentoRepository;
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
+    private final DiagramaBpmnRepository diagramaBpmnRepository;
+    private final ReporteRepository reporteRepository;
+    private final UserDeviceTokenRepository userDeviceTokenRepository;
+    private final WorkflowCoreEventRepository workflowCoreEventRepository;
+    private final WorkspaceGraphStateRepository workspaceGraphStateRepository;
     private final CodigoSeguimientoGenerator codigoGenerator;
 
-    // --- 1. PROCESO DE COMPRAS (3 POOLS/SWIMLANES: Sistemas, Ventas, Finanzas) ---
-    private static final String PROCUREMENT_XML = 
+    // --- 1. PROCESO DE AMPLIACIÓN DE INTERNET DE FIBRA ÓPTICA (3 swimlanes: Ventas Corporativas, Ingeniería de Red, Facturación y Legal) ---
+    private static final String INTERNET_EXPANSION_XML = 
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Procurement\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
-            "  <bpmn:collaboration id=\"Collaboration_Procurement\">\n" +
-            "    <bpmn:participant id=\"Participant_Procurement\" name=\"Adquisiciones y Compras Corporativas\" processRef=\"procurement-workflow\" />\n" +
+            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Exp\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
+            "  <bpmn:collaboration id=\"Collaboration_Exp\">\n" +
+            "    <bpmn:participant id=\"Participant_Exp\" name=\"Ampliación de Contrato de Internet (Fibra Corporativa)\" processRef=\"internet-expansion-workflow\" />\n" +
             "  </bpmn:collaboration>\n" +
-            "  <bpmn:process id=\"procurement-workflow\" name=\"Proceso de Compras\" isExecutable=\"true\">\n" +
-            "    <bpmn:laneSet id=\"LaneSet_Procurement\">\n" +
-            "      <bpmn:lane id=\"Lane_Proc_Sistemas\" name=\"Sistemas\" wf:departamento=\"Sistemas\">\n" +
-            "        <bpmn:flowNodeRef>StartEvent_Proc</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_Pendiente</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_Sys1</bpmn:flowNodeRef>\n" +
+            "  <bpmn:process id=\"internet-expansion-workflow\" name=\"Ampliación de Contrato de Internet\" isExecutable=\"true\">\n" +
+            "    <bpmn:laneSet id=\"LaneSet_Exp\">\n" +
+            "      <bpmn:lane id=\"Lane_Exp_Ventas\" name=\"Ventas Corporativas\" wf:departamento=\"Ventas Corporativas\">\n" +
+            "        <bpmn:flowNodeRef>StartEvent_Exp</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>Activity_Vta_Comercial</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
-            "      <bpmn:lane id=\"Lane_Proc_Ventas\" name=\"Ventas\" wf:departamento=\"Ventas\">\n" +
-            "        <bpmn:flowNodeRef>Activity_Venta1</bpmn:flowNodeRef>\n" +
+            "      <bpmn:lane id=\"Lane_Exp_Noc\" name=\"Ingeniería de Red\" wf:departamento=\"Ingeniería de Red\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Noc_Estudio</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
-            "      <bpmn:lane id=\"Lane_Proc_Finanzas\" name=\"Finanzas\" wf:departamento=\"Finanzas\">\n" +
-            "        <bpmn:flowNodeRef>Activity_RRHH1</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>EndEvent_Proc</bpmn:flowNodeRef>\n" +
+            "      <bpmn:lane id=\"Lane_Exp_Billing\" name=\"Facturación y Legal\" wf:departamento=\"Facturación y Legal\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Fact_Adenda</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>EndEvent_Exp</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
             "    </bpmn:laneSet>\n" +
-            "    <bpmn:startEvent id=\"StartEvent_Proc\" name=\"Inicio\">\n" +
-            "      <bpmn:outgoing>Flow_Proc_1</bpmn:outgoing>\n" +
+            "    <bpmn:startEvent id=\"StartEvent_Exp\" name=\"Inicio\">\n" +
+            "      <bpmn:outgoing>Flow_Exp_1</bpmn:outgoing>\n" +
             "    </bpmn:startEvent>\n" +
-            "    <bpmn:userTask id=\"Activity_Pendiente\" name=\"Bandeja de Entrada / Pendientes\" wf:departamento=\"Sistemas\">\n" +
-            "      <bpmn:incoming>Flow_Proc_1</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Proc_2</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Vta_Comercial\" name=\"Validar Viabilidad Comercial\" wf:departamento=\"Ventas Corporativas\" wf:form='[{\"name\":\"nuevoAnchoBanda\",\"label\":\"Ancho de Banda Solicitado (Gbps)\",\"type\":\"number\",\"required\":true},{\"name\":\"tarifaMensualAdicional\",\"label\":\"Incremento Mensual Estimado (USD)\",\"type\":\"number\",\"required\":true}]'>\n" +
+            "      <bpmn:incoming>Flow_Exp_1</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Exp_2</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_Sys1\" name=\"Analizar Requerimientos\" wf:departamento=\"Sistemas\" wf:form='[{\"name\":\"monto\",\"label\":\"Presupuesto Est. (USD)\",\"type\":\"number\",\"required\":true},{\"name\":\"motivo\",\"label\":\"Justificación Técnica\",\"type\":\"text\",\"required\":false}]'>\n" +
-            "      <bpmn:incoming>Flow_Proc_2</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Proc_3</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Noc_Estudio\" name=\"Estudio Técnico e Incremento de Capacidad\" wf:departamento=\"Ingeniería de Red\" wf:form='[{\"name\":\"nodoOrigen\",\"label\":\"Nodo Principal de Distribución\",\"type\":\"text\",\"required\":true},{\"name\":\"intervencionFisicaRequerida\",\"label\":\"Requiere Modificación de Fibra en Campo\",\"type\":\"checkbox\",\"required\":false}]'>\n" +
+            "      <bpmn:incoming>Flow_Exp_2</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Exp_3</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_Venta1\" name=\"Aprobación Presupuesto\" wf:departamento=\"Ventas\">\n" +
-            "      <bpmn:incoming>Flow_Proc_3</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Proc_4</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Fact_Adenda\" name=\"Firma de Adenda y Activación Comercial\" wf:departamento=\"Facturación y Legal\">\n" +
+            "      <bpmn:incoming>Flow_Exp_3</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Exp_4</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_RRHH1\" name=\"Firma de Contrato\" wf:departamento=\"Finanzas\">\n" +
-            "      <bpmn:incoming>Flow_Proc_4</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Proc_5</bpmn:outgoing>\n" +
-            "    </bpmn:userTask>\n" +
-            "    <bpmn:endEvent id=\"EndEvent_Proc\" name=\"Fin\">\n" +
-            "      <bpmn:incoming>Flow_Proc_5</bpmn:incoming>\n" +
+            "    <bpmn:endEvent id=\"EndEvent_Exp\" name=\"Fin\">\n" +
+            "      <bpmn:incoming>Flow_Exp_4</bpmn:incoming>\n" +
             "    </bpmn:endEvent>\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Proc_1\" sourceRef=\"StartEvent_Proc\" targetRef=\"Activity_Pendiente\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Proc_2\" sourceRef=\"Activity_Pendiente\" targetRef=\"Activity_Sys1\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Proc_3\" sourceRef=\"Activity_Sys1\" targetRef=\"Activity_Venta1\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Proc_4\" sourceRef=\"Activity_Venta1\" targetRef=\"Activity_RRHH1\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Proc_5\" sourceRef=\"Activity_RRHH1\" targetRef=\"EndEvent_Proc\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Exp_1\" sourceRef=\"StartEvent_Exp\" targetRef=\"Activity_Vta_Comercial\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Exp_2\" sourceRef=\"Activity_Vta_Comercial\" targetRef=\"Activity_Noc_Estudio\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Exp_3\" sourceRef=\"Activity_Noc_Estudio\" targetRef=\"Activity_Fact_Adenda\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Exp_4\" sourceRef=\"Activity_Fact_Adenda\" targetRef=\"EndEvent_Exp\" />\n" +
             "  </bpmn:process>\n" +
-            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Procurement\">\n" +
-            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Procurement\" bpmnElement=\"Collaboration_Procurement\">\n" +
-            "      <bpmndi:BPMNShape id=\"Participant_Procurement_di\" bpmnElement=\"Participant_Procurement\" isHorizontal=\"true\">\n" +
+            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Exp\">\n" +
+            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Exp\" bpmnElement=\"Collaboration_Exp\">\n" +
+            "      <bpmndi:BPMNShape id=\"Participant_Exp_di\" bpmnElement=\"Participant_Exp\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"120\" y=\"80\" width=\"900\" height=\"480\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_Proc_Sistemas_di\" bpmnElement=\"Lane_Proc_Sistemas\" isHorizontal=\"true\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Exp_Ventas_di\" bpmnElement=\"Lane_Exp_Ventas\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"150\" y=\"80\" width=\"870\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_Proc_Ventas_di\" bpmnElement=\"Lane_Proc_Ventas\" isHorizontal=\"true\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Exp_Noc_di\" bpmnElement=\"Lane_Exp_Noc\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"150\" y=\"240\" width=\"870\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_Proc_Finanzas_di\" bpmnElement=\"Lane_Proc_Finanzas\" isHorizontal=\"true\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Exp_Billing_di\" bpmnElement=\"Lane_Exp_Billing\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"150\" y=\"400\" width=\"870\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"StartEvent_Proc_di\" bpmnElement=\"StartEvent_Proc\">\n" +
+            "      <bpmndi:BPMNShape id=\"StartEvent_Exp_di\" bpmnElement=\"StartEvent_Exp\">\n" +
             "        <dc:Bounds x=\"200\" y=\"140\" width=\"36\" height=\"36\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Pendiente_di\" bpmnElement=\"Activity_Pendiente\">\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Vta_Comercial_di\" bpmnElement=\"Activity_Vta_Comercial\">\n" +
             "        <dc:Bounds x=\"280\" y=\"120\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Sys1_di\" bpmnElement=\"Activity_Sys1\">\n" +
-            "        <dc:Bounds x=\"430\" y=\"120\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Noc_Estudio_di\" bpmnElement=\"Activity_Noc_Estudio\">\n" +
+            "        <dc:Bounds x=\"480\" y=\"280\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Venta1_di\" bpmnElement=\"Activity_Venta1\">\n" +
-            "        <dc:Bounds x=\"580\" y=\"280\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Fact_Adenda_di\" bpmnElement=\"Activity_Fact_Adenda\">\n" +
+            "        <dc:Bounds x=\"680\" y=\"440\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_RRHH1_di\" bpmnElement=\"Activity_RRHH1\">\n" +
-            "        <dc:Bounds x=\"730\" y=\"440\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"EndEvent_Exp_di\" bpmnElement=\"EndEvent_Exp\">\n" +
+            "        <dc:Bounds x=\"880\" y=\"462\" width=\"36\" height=\"36\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"EndEvent_Proc_di\" bpmnElement=\"EndEvent_Proc\">\n" +
-            "        <dc:Bounds x=\"890\" y=\"460\" width=\"36\" height=\"36\" />\n" +
-            "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Proc_1_di\" bpmnElement=\"Flow_Proc_1\">\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Exp_1_di\" bpmnElement=\"Flow_Exp_1\">\n" +
             "        <di:waypoint x=\"236\" y=\"158\" />\n" +
             "        <di:waypoint x=\"280\" y=\"158\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Proc_2_di\" bpmnElement=\"Flow_Proc_2\">\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Exp_2_di\" bpmnElement=\"Flow_Exp_2\">\n" +
             "        <di:waypoint x=\"380\" y=\"160\" />\n" +
             "        <di:waypoint x=\"430\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"430\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"480\" y=\"320\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Proc_3_di\" bpmnElement=\"Flow_Proc_3\">\n" +
-            "        <di:waypoint x=\"530\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"320\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Exp_3_di\" bpmnElement=\"Flow_Exp_3\">\n" +
             "        <di:waypoint x=\"580\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"630\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"630\" y=\"480\" />\n" +
+            "        <di:waypoint x=\"680\" y=\"480\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Proc_4_di\" bpmnElement=\"Flow_Proc_4\">\n" +
-            "        <di:waypoint x=\"680\" y=\"320\" />\n" +
-            "        <di:waypoint x=\"705\" y=\"320\" />\n" +
-            "        <di:waypoint x=\"705\" y=\"480\" />\n" +
-            "        <di:waypoint x=\"730\" y=\"480\" />\n" +
-            "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Proc_5_di\" bpmnElement=\"Flow_Proc_5\">\n" +
-            "        <di:waypoint x=\"830\" y=\"480\" />\n" +
-            "        <di:waypoint x=\"890\" y=\"480\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Exp_4_di\" bpmnElement=\"Flow_Exp_4\">\n" +
+            "        <di:waypoint x=\"780\" y=\"480\" />\n" +
+            "        <di:waypoint x=\"880\" y=\"480\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
             "    </bpmndi:BPMNPlane>\n" +
             "  </bpmndi:BPMNDiagram>\n" +
             "</bpmn:definitions>";
 
-    // --- 2. PROCESO DE SELECCIÓN Y ONBOARDING (2 POOLS: Recursos Humanos, Sistemas) ---
-    private static final String RECRUITMENT_XML = 
+    // --- 2. PROCESO DE SOPORTE TÉCNICO DE ENLACE DEDICADO (2 swimlanes: Soporte Técnico, Ingeniería de Red) ---
+    private static final String TECH_SUPPORT_XML = 
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Recruitment\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
-            "  <bpmn:collaboration id=\"Collaboration_Recruitment\">\n" +
-            "    <bpmn:participant id=\"Participant_Recruitment\" name=\"Selección y Contratación\" processRef=\"hr-recruitment-workflow\" />\n" +
+            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Sup\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
+            "  <bpmn:collaboration id=\"Collaboration_Sup\">\n" +
+            "    <bpmn:participant id=\"Participant_Sup\" name=\"Soporte Técnico de Alta Prioridad\" processRef=\"tech-support-workflow\" />\n" +
             "  </bpmn:collaboration>\n" +
-            "  <bpmn:process id=\"hr-recruitment-workflow\" name=\"Proceso de Selección y Onboarding\" isExecutable=\"true\">\n" +
-            "    <bpmn:laneSet id=\"LaneSet_Recruitment\">\n" +
-            "      <bpmn:lane id=\"Lane_HR_RRHH\" name=\"Recursos Humanos\" wf:departamento=\"Recursos Humanos\">\n" +
-            "        <bpmn:flowNodeRef>StartEvent_HR</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_HR_Pendiente</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_HR_Revision</bpmn:flowNodeRef>\n" +
+            "  <bpmn:process id=\"tech-support-workflow\" name=\"Soporte Técnico de Alta Prioridad\" isExecutable=\"true\">\n" +
+            "    <bpmn:laneSet id=\"LaneSet_Sup\">\n" +
+            "      <bpmn:lane id=\"Lane_Sup_Soporte\" name=\"Soporte Técnico\" wf:departamento=\"Soporte Técnico\">\n" +
+            "        <bpmn:flowNodeRef>StartEvent_Sup</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>Activity_Sop_Diag</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>Activity_Sop_Calidad</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>EndEvent_Sup</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
-            "      <bpmn:lane id=\"Lane_HR_Sistemas\" name=\"Sistemas\" wf:departamento=\"Sistemas\">\n" +
-            "        <bpmn:flowNodeRef>Activity_HR_Sistemas</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>EndEvent_HR</bpmn:flowNodeRef>\n" +
+            "      <bpmn:lane id=\"Lane_Sup_Noc\" name=\"Ingeniería de Red\" wf:departamento=\"Ingeniería de Red\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Noc_Intervencion</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
             "    </bpmn:laneSet>\n" +
-            "    <bpmn:startEvent id=\"StartEvent_HR\" name=\"Inicio\">\n" +
-            "      <bpmn:outgoing>Flow_HR_1</bpmn:outgoing>\n" +
+            "    <bpmn:startEvent id=\"StartEvent_Sup\" name=\"Inicio\">\n" +
+            "      <bpmn:outgoing>Flow_Sup_1</bpmn:outgoing>\n" +
             "    </bpmn:startEvent>\n" +
-            "    <bpmn:userTask id=\"Activity_HR_Pendiente\" name=\"Revisión de Hojas de Vida\" wf:departamento=\"Recursos Humanos\">\n" +
-            "      <bpmn:incoming>Flow_HR_1</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_HR_2</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Sop_Diag\" name=\"Diagnóstico y Triaje Técnico\" wf:departamento=\"Soporte Técnico\" wf:form='[{\"name\":\"atenuacionFibra\",\"label\":\"Atenuación Medida (dB)\",\"type\":\"number\",\"required\":true},{\"name\":\"causaProbable\",\"label\":\"Diagnóstico Preliminar\",\"type\":\"text\",\"required\":false}]'>\n" +
+            "      <bpmn:incoming>Flow_Sup_1</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Sup_2</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_HR_Revision\" name=\"Entrevista Inicial\" wf:departamento=\"Recursos Humanos\">\n" +
-            "      <bpmn:incoming>Flow_HR_2</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_HR_3</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Noc_Intervencion\" name=\"Resolución e Intervención de Red\" wf:departamento=\"Ingeniería de Red\">\n" +
+            "      <bpmn:incoming>Flow_Sup_2</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Sup_3</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_HR_Sistemas\" name=\"Creación de Cuentas y Accesos\" wf:departamento=\"Sistemas\">\n" +
-            "      <bpmn:incoming>Flow_HR_3</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_HR_4</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Sop_Calidad\" name=\"Control de Calidad y Cierre de Incidente\" wf:departamento=\"Soporte Técnico\">\n" +
+            "      <bpmn:incoming>Flow_Sup_3</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Sup_4</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:endEvent id=\"EndEvent_HR\" name=\"Fin\">\n" +
-            "      <bpmn:incoming>Flow_HR_4</bpmn:incoming>\n" +
+            "    <bpmn:endEvent id=\"EndEvent_Sup\" name=\"Fin\">\n" +
+            "      <bpmn:incoming>Flow_Sup_4</bpmn:incoming>\n" +
             "    </bpmn:endEvent>\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_HR_1\" sourceRef=\"StartEvent_HR\" targetRef=\"Activity_HR_Pendiente\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_HR_2\" sourceRef=\"Activity_HR_Pendiente\" targetRef=\"Activity_HR_Revision\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_HR_3\" sourceRef=\"Activity_HR_Revision\" targetRef=\"Activity_HR_Sistemas\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_HR_4\" sourceRef=\"Activity_HR_Sistemas\" targetRef=\"EndEvent_HR\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Sup_1\" sourceRef=\"StartEvent_Sup\" targetRef=\"Activity_Sop_Diag\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Sup_2\" sourceRef=\"Activity_Sop_Diag\" targetRef=\"Activity_Noc_Intervencion\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Sup_3\" sourceRef=\"Activity_Noc_Intervencion\" targetRef=\"Activity_Sop_Calidad\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Sup_4\" sourceRef=\"Activity_Sop_Calidad\" targetRef=\"EndEvent_Sup\" />\n" +
             "  </bpmn:process>\n" +
-            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Recruitment\">\n" +
-            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Recruitment\" bpmnElement=\"Collaboration_Recruitment\">\n" +
-            "      <bpmndi:BPMNShape id=\"Participant_Recruitment_di\" bpmnElement=\"Participant_Recruitment\" isHorizontal=\"true\">\n" +
+            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Sup\">\n" +
+            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Sup\" bpmnElement=\"Collaboration_Sup\">\n" +
+            "      <bpmndi:BPMNShape id=\"Participant_Sup_di\" bpmnElement=\"Participant_Sup\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"120\" y=\"80\" width=\"800\" height=\"320\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_HR_RRHH_di\" bpmnElement=\"Lane_HR_RRHH\" isHorizontal=\"true\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Sup_Soporte_di\" bpmnElement=\"Lane_Sup_Soporte\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"150\" y=\"80\" width=\"770\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_HR_Sistemas_di\" bpmnElement=\"Lane_HR_Sistemas\" isHorizontal=\"true\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Sup_Noc_di\" bpmnElement=\"Lane_Sup_Noc\" isHorizontal=\"true\">\n" +
             "        <dc:Bounds x=\"150\" y=\"240\" width=\"770\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"StartEvent_HR_di\" bpmnElement=\"StartEvent_HR\">\n" +
+            "      <bpmndi:BPMNShape id=\"StartEvent_Sup_di\" bpmnElement=\"StartEvent_Sup\">\n" +
             "        <dc:Bounds x=\"200\" y=\"140\" width=\"36\" height=\"36\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_HR_Pendiente_di\" bpmnElement=\"Activity_HR_Pendiente\">\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Sop_Diag_di\" bpmnElement=\"Activity_Sop_Diag\">\n" +
             "        <dc:Bounds x=\"280\" y=\"120\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_HR_Revision_di\" bpmnElement=\"Activity_HR_Revision\">\n" +
-            "        <dc:Bounds x=\"430\" y=\"120\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Noc_Intervencion_di\" bpmnElement=\"Activity_Noc_Intervencion\">\n" +
+            "        <dc:Bounds x=\"480\" y=\"280\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_HR_Sistemas_di\" bpmnElement=\"Activity_HR_Sistemas\">\n" +
-            "        <dc:Bounds x=\"580\" y=\"280\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Sop_Calidad_di\" bpmnElement=\"Activity_Sop_Calidad\">\n" +
+            "        <dc:Bounds x=\"680\" y=\"120\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"EndEvent_HR_di\" bpmnElement=\"EndEvent_HR\">\n" +
-            "        <dc:Bounds x=\"740\" y=\"300\" width=\"36\" height=\"36\" />\n" +
+            "      <bpmndi:BPMNShape id=\"EndEvent_Sup_di\" bpmnElement=\"EndEvent_Sup\">\n" +
+            "        <dc:Bounds x=\"830\" y=\"142\" width=\"36\" height=\"36\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_HR_1_di\" bpmnElement=\"Flow_HR_1\">\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Sup_1_di\" bpmnElement=\"Flow_Sup_1\">\n" +
             "        <di:waypoint x=\"236\" y=\"158\" />\n" +
             "        <di:waypoint x=\"280\" y=\"158\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_HR_2_di\" bpmnElement=\"Flow_HR_2\">\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Sup_2_di\" bpmnElement=\"Flow_Sup_2\">\n" +
             "        <di:waypoint x=\"380\" y=\"160\" />\n" +
             "        <di:waypoint x=\"430\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"430\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"480\" y=\"320\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_HR_3_di\" bpmnElement=\"Flow_HR_3\">\n" +
-            "        <di:waypoint x=\"530\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"320\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Sup_3_di\" bpmnElement=\"Flow_Sup_3\">\n" +
             "        <di:waypoint x=\"580\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"630\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"630\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"680\" y=\"160\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_HR_4_di\" bpmnElement=\"Flow_HR_4\">\n" +
-            "        <di:waypoint x=\"680\" y=\"320\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Sup_4_di\" bpmnElement=\"Flow_Sup_4\">\n" +
+            "        <di:waypoint x=\"780\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"830\" y=\"160\" />\n" +
+            "      </bpmndi:BPMNEdge>\n" +
+            "    </bpmndi:BPMNPlane>\n" +
+            "  </bpmndi:BPMNDiagram>\n" +
+            "</bpmn:definitions>";
+
+    // --- 3. PROCESO DE APROBACIÓN DE TARIFAS Y DESCUENTOS ESPECIALES (2 swimlanes: Ventas Corporativas, Facturación y Legal) ---
+    private static final String DATA_DISCOUNT_XML = 
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Disc\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
+            "  <bpmn:collaboration id=\"Collaboration_Disc\">\n" +
+            "    <bpmn:participant id=\"Participant_Disc\" name=\"Aprobación de Descuentos Especiales\" processRef=\"data-discount-workflow\" />\n" +
+            "  </bpmn:collaboration>\n" +
+            "  <bpmn:process id=\"data-discount-workflow\" name=\"Aprobación de Descuentos Especiales\" isExecutable=\"true\">\n" +
+            "    <bpmn:laneSet id=\"LaneSet_Disc\">\n" +
+            "      <bpmn:lane id=\"Lane_Disc_Ventas\" name=\"Ventas\" wf:departamento=\"Ventas Corporativas\">\n" +
+            "        <bpmn:flowNodeRef>StartEvent_Disc</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>Activity_Vta_Propuesta</bpmn:flowNodeRef>\n" +
+            "      </bpmn:lane>\n" +
+            "      <bpmn:lane id=\"Lane_Disc_Billing\" name=\"Facturación\" wf:departamento=\"Facturación y Legal\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Fact_Aprobacion</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>EndEvent_Disc</bpmn:flowNodeRef>\n" +
+            "      </bpmn:lane>\n" +
+            "    </bpmn:laneSet>\n" +
+            "    <bpmn:startEvent id=\"StartEvent_Disc\" name=\"Inicio\">\n" +
+            "      <bpmn:outgoing>Flow_Disc_1</bpmn:outgoing>\n" +
+            "    </bpmn:startEvent>\n" +
+            "    <bpmn:userTask id=\"Activity_Vta_Propuesta\" name=\"Formular Propuesta Comercial\" wf:departamento=\"Ventas Corporativas\">\n" +
+            "      <bpmn:incoming>Flow_Disc_1</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Disc_2</bpmn:outgoing>\n" +
+            "    </bpmn:userTask>\n" +
+            "    <bpmn:userTask id=\"Activity_Fact_Aprobacion\" name=\"Aprobación Financiera y Tarifaria\" wf:departamento=\"Facturación y Legal\" wf:form='[{\"name\":\"margenNetoFinal\",\"label\":\"Margen Bruto Proyectado (%)\",\"type\":\"number\",\"required\":true},{\"name\":\"aprobadoComiteTarifas\",\"label\":\"Aprobado por el Comité de Tarifas\",\"type\":\"checkbox\",\"required\":true}]'>\n" +
+            "      <bpmn:incoming>Flow_Disc_2</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Disc_3</bpmn:outgoing>\n" +
+            "    </bpmn:userTask>\n" +
+            "    <bpmn:endEvent id=\"EndEvent_Disc\" name=\"Fin\">\n" +
+            "      <bpmn:incoming>Flow_Disc_3</bpmn:incoming>\n" +
+            "    </bpmn:endEvent>\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Disc_1\" sourceRef=\"StartEvent_Disc\" targetRef=\"Activity_Vta_Propuesta\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Disc_2\" sourceRef=\"Activity_Vta_Propuesta\" targetRef=\"Activity_Fact_Aprobacion\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Disc_3\" sourceRef=\"Activity_Fact_Aprobacion\" targetRef=\"EndEvent_Disc\" />\n" +
+            "  </bpmn:process>\n" +
+            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Disc\">\n" +
+            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Disc\" bpmnElement=\"Collaboration_Disc\">\n" +
+            "      <bpmndi:BPMNShape id=\"Participant_Disc_di\" bpmnElement=\"Participant_Disc\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"120\" y=\"80\" width=\"800\" height=\"320\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Disc_Ventas_di\" bpmnElement=\"Lane_Disc_Ventas\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"80\" width=\"770\" height=\"160\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Disc_Billing_di\" bpmnElement=\"Lane_Disc_Billing\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"240\" width=\"770\" height=\"160\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"StartEvent_Disc_di\" bpmnElement=\"StartEvent_Disc\">\n" +
+            "        <dc:Bounds x=\"200\" y=\"140\" width=\"36\" height=\"36\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Vta_Propuesta_di\" bpmnElement=\"Activity_Vta_Propuesta\">\n" +
+            "        <dc:Bounds x=\"280\" y=\"120\" width=\"100\" height=\"80\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Fact_Aprobacion_di\" bpmnElement=\"Activity_Fact_Aprobacion\">\n" +
+            "        <dc:Bounds x=\"480\" y=\"280\" width=\"100\" height=\"80\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"EndEvent_Disc_di\" bpmnElement=\"EndEvent_Disc\">\n" +
+            "        <dc:Bounds x=\"740\" y=\"300\" width=\"36\" height=\"36\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Disc_1_di\" bpmnElement=\"Flow_Disc_1\">\n" +
+            "        <di:waypoint x=\"236\" y=\"158\" />\n" +
+            "        <di:waypoint x=\"280\" y=\"158\" />\n" +
+            "      </bpmndi:BPMNEdge>\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Disc_2_di\" bpmnElement=\"Flow_Disc_2\">\n" +
+            "        <di:waypoint x=\"380\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"430\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"430\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"480\" y=\"320\" />\n" +
+            "      </bpmndi:BPMNEdge>\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Disc_3_di\" bpmnElement=\"Flow_Disc_3\">\n" +
+            "        <di:waypoint x=\"580\" y=\"320\" />\n" +
             "        <di:waypoint x=\"740\" y=\"320\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
             "    </bpmndi:BPMNPlane>\n" +
             "  </bpmndi:BPMNDiagram>\n" +
             "</bpmn:definitions>";
 
-    // --- 3. PROCESO COMERCIAL Y DESCUENTOS (2 POOLS: Ventas, Finanzas) ---
-    private static final String SALES_XML = 
+    // --- 4. PROCESO DE INSTALACIÓN Y APROVISIONAMIENTO DE FIBRA ÓPTICA (4 swimlanes: Ventas, Ingeniería, Soporte, Facturación) ---
+    private static final String FIBER_INSTALLATION_XML = 
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_Sales\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
-            "  <bpmn:collaboration id=\"Collaboration_Sales\">\n" +
-            "    <bpmn:participant id=\"Participant_Sales\" name=\"Aprobación de Descuentos Especiales\" processRef=\"sales-discount-workflow\" />\n" +
+            "<bpmn:definitions xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\" xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\" xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\" xmlns:wf=\"http://workflow.com/schema\" id=\"Definitions_FibInst\" targetNamespace=\"http://bpmn.io/schema/bpmn\">\n" +
+            "  <bpmn:collaboration id=\"Collaboration_FibInst\">\n" +
+            "    <bpmn:participant id=\"Participant_FibInst\" name=\"Instalación y Aprovisionamiento de Fibra Óptica\" processRef=\"fiber-installation-workflow\" />\n" +
             "  </bpmn:collaboration>\n" +
-            "  <bpmn:process id=\"sales-discount-workflow\" name=\"Proceso Comercial y Descuentos\" isExecutable=\"true\">\n" +
-            "    <bpmn:laneSet id=\"LaneSet_Sales\">\n" +
-            "      <bpmn:lane id=\"Lane_Sales_Ventas\" name=\"Ventas\" wf:departamento=\"Ventas\">\n" +
-            "        <bpmn:flowNodeRef>StartEvent_Sales</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_Sales_Pendiente</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>Activity_Sales_Propuesta</bpmn:flowNodeRef>\n" +
+            "  <bpmn:process id=\"fiber-installation-workflow\" name=\"Aprovisionamiento e Instalación de Fibra\" isExecutable=\"true\">\n" +
+            "    <bpmn:laneSet id=\"LaneSet_FibInst\">\n" +
+            "      <bpmn:lane id=\"Lane_Fib_Ventas\" name=\"Ventas\" wf:departamento=\"Ventas Corporativas\">\n" +
+            "        <bpmn:flowNodeRef>StartEvent_Fib</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>Activity_Vta_Factibilidad</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
-            "      <bpmn:lane id=\"Lane_Sales_Finanzas\" name=\"Finanzas\" wf:departamento=\"Finanzas\">\n" +
-            "        <bpmn:flowNodeRef>Activity_Sales_Finanzas</bpmn:flowNodeRef>\n" +
-            "        <bpmn:flowNodeRef>EndEvent_Sales</bpmn:flowNodeRef>\n" +
+            "      <bpmn:lane id=\"Lane_Fib_Noc\" name=\"Ingeniería\" wf:departamento=\"Ingeniería de Red\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Noc_Diseno</bpmn:flowNodeRef>\n" +
+            "      </bpmn:lane>\n" +
+            "      <bpmn:lane id=\"Lane_Fib_Soporte\" name=\"Soporte\" wf:departamento=\"Soporte Técnico\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Sop_Instalacion</bpmn:flowNodeRef>\n" +
+            "      </bpmn:lane>\n" +
+            "      <bpmn:lane id=\"Lane_Fib_Fact\" name=\"Facturación\" wf:departamento=\"Facturación y Legal\">\n" +
+            "        <bpmn:flowNodeRef>Activity_Fact_Alta</bpmn:flowNodeRef>\n" +
+            "        <bpmn:flowNodeRef>EndEvent_Fib</bpmn:flowNodeRef>\n" +
             "      </bpmn:lane>\n" +
             "    </bpmn:laneSet>\n" +
-            "    <bpmn:startEvent id=\"StartEvent_Sales\" name=\"Inicio\">\n" +
-            "      <bpmn:outgoing>Flow_Sales_1</bpmn:outgoing>\n" +
+            "    <bpmn:startEvent id=\"StartEvent_Fib\" name=\"Inicio\">\n" +
+            "      <bpmn:outgoing>Flow_Fib_1</bpmn:outgoing>\n" +
             "    </bpmn:startEvent>\n" +
-            "    <bpmn:userTask id=\"Activity_Sales_Pendiente\" name=\"Registro de Solicitud de Descuento\" wf:departamento=\"Ventas\">\n" +
-            "      <bpmn:incoming>Flow_Sales_1</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Sales_2</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Vta_Factibilidad\" name=\"Validar Viabilidad y Cobertura\" wf:departamento=\"Ventas Corporativas\" wf:form='[{\"name\":\"distanciaCajaCercana\",\"label\":\"Distancia a la caja de distribución (m)\",\"type\":\"number\",\"required\":true},{\"name\":\"coberturaConfirmada\",\"label\":\"Confirmar Cobertura en Zona\",\"type\":\"checkbox\",\"required\":true}]'>\n" +
+            "      <bpmn:incoming>Flow_Fib_1</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Fib_2</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_Sales_Propuesta\" name=\"Validación del Margen Comercial\" wf:departamento=\"Ventas\">\n" +
-            "      <bpmn:incoming>Flow_Sales_2</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Sales_3</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Noc_Diseno\" name=\"Diseño de Red y Puerto GPON\" wf:departamento=\"Ingeniería de Red\" wf:form='[{\"name\":\"cajaNapoId\",\"label\":\"Código de Caja NAP Asignada\",\"type\":\"text\",\"required\":true},{\"name\":\"puertoGponAsignado\",\"label\":\"Número de Puerto en OLT\",\"type\":\"number\",\"required\":true}]'>\n" +
+            "      <bpmn:incoming>Flow_Fib_2</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Fib_3</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:userTask id=\"Activity_Sales_Finanzas\" name=\"Aprobación Presupuestaria del Descuento\" wf:departamento=\"Finanzas\">\n" +
-            "      <bpmn:incoming>Flow_Sales_3</bpmn:incoming>\n" +
-            "      <bpmn:outgoing>Flow_Sales_4</bpmn:outgoing>\n" +
+            "    <bpmn:userTask id=\"Activity_Sop_Instalacion\" name=\"Instalación Física y Fusión en Domicilio\" wf:departamento=\"Soporte Técnico\" wf:form='[{\"name\":\"potenciaOpticaDomicilio\",\"label\":\"Potencia óptica medida en ONU (dBm)\",\"type\":\"number\",\"required\":true},{\"name\":\"instalacionCompletada\",\"label\":\"Fusión e Instalación Exitosa\",\"type\":\"checkbox\",\"required\":true}]'>\n" +
+            "      <bpmn:incoming>Flow_Fib_3</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Fib_4</bpmn:outgoing>\n" +
             "    </bpmn:userTask>\n" +
-            "    <bpmn:endEvent id=\"EndEvent_Sales\" name=\"Fin\">\n" +
-            "      <bpmn:incoming>Flow_Sales_4</bpmn:incoming>\n" +
+            "    <bpmn:userTask id=\"Activity_Fact_Alta\" name=\"Alta de Suscripción y Activación de Cuenta\" wf:departamento=\"Facturación y Legal\">\n" +
+            "      <bpmn:incoming>Flow_Fib_4</bpmn:incoming>\n" +
+            "      <bpmn:outgoing>Flow_Fib_5</bpmn:outgoing>\n" +
+            "    </bpmn:userTask>\n" +
+            "    <bpmn:endEvent id=\"EndEvent_Fib\" name=\"Fin\">\n" +
+            "      <bpmn:incoming>Flow_Fib_5</bpmn:incoming>\n" +
             "    </bpmn:endEvent>\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Sales_1\" sourceRef=\"StartEvent_Sales\" targetRef=\"Activity_Sales_Pendiente\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Sales_2\" sourceRef=\"Activity_Sales_Pendiente\" targetRef=\"Activity_Sales_Propuesta\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Sales_3\" sourceRef=\"Activity_Sales_Propuesta\" targetRef=\"Activity_Sales_Finanzas\" />\n" +
-            "    <bpmn:sequenceFlow id=\"Flow_Sales_4\" sourceRef=\"Activity_Sales_Finanzas\" targetRef=\"EndEvent_Sales\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Fib_1\" sourceRef=\"StartEvent_Fib\" targetRef=\"Activity_Vta_Factibilidad\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Fib_2\" sourceRef=\"Activity_Vta_Factibilidad\" targetRef=\"Activity_Noc_Diseno\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Fib_3\" sourceRef=\"Activity_Noc_Diseno\" targetRef=\"Activity_Sop_Instalacion\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Fib_4\" sourceRef=\"Activity_Sop_Instalacion\" targetRef=\"Activity_Fact_Alta\" />\n" +
+            "    <bpmn:sequenceFlow id=\"Flow_Fib_5\" sourceRef=\"Activity_Fact_Alta\" targetRef=\"EndEvent_Fib\" />\n" +
             "  </bpmn:process>\n" +
-            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Sales\">\n" +
-            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Sales\" bpmnElement=\"Collaboration_Sales\">\n" +
-            "      <bpmndi:BPMNShape id=\"Participant_Sales_di\" bpmnElement=\"Participant_Sales\" isHorizontal=\"true\">\n" +
-            "        <dc:Bounds x=\"120\" y=\"80\" width=\"800\" height=\"320\" />\n" +
+            "  <bpmndi:BPMNDiagram id=\"BPMNDiagram_Fib\">\n" +
+            "    <bpmndi:BPMNPlane id=\"BPMNPlane_Fib\" bpmnElement=\"Collaboration_FibInst\">\n" +
+            "      <bpmndi:BPMNShape id=\"Participant_Fib_di\" bpmnElement=\"Participant_FibInst\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"120\" y=\"80\" width=\"1000\" height=\"640\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_Sales_Ventas_di\" bpmnElement=\"Lane_Sales_Ventas\" isHorizontal=\"true\">\n" +
-            "        <dc:Bounds x=\"150\" y=\"80\" width=\"770\" height=\"160\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Fib_Ventas_di\" bpmnElement=\"Lane_Fib_Ventas\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"80\" width=\"970\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Lane_Sales_Finanzas_di\" bpmnElement=\"Lane_Sales_Finanzas\" isHorizontal=\"true\">\n" +
-            "        <dc:Bounds x=\"150\" y=\"240\" width=\"770\" height=\"160\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Fib_Noc_di\" bpmnElement=\"Lane_Fib_Noc\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"240\" width=\"970\" height=\"160\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"StartEvent_Sales_di\" bpmnElement=\"StartEvent_Sales\">\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Fib_Soporte_di\" bpmnElement=\"Lane_Fib_Soporte\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"400\" width=\"970\" height=\"160\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"Lane_Fib_Fact_di\" bpmnElement=\"Lane_Fib_Fact\" isHorizontal=\"true\">\n" +
+            "        <dc:Bounds x=\"150\" y=\"560\" width=\"970\" height=\"160\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNShape id=\"StartEvent_Fib_di\" bpmnElement=\"StartEvent_Fib\">\n" +
             "        <dc:Bounds x=\"200\" y=\"140\" width=\"36\" height=\"36\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Sales_Pendiente_di\" bpmnElement=\"Activity_Sales_Pendiente\">\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Vta_Factibilidad_di\" bpmnElement=\"Activity_Vta_Factibilidad\">\n" +
             "        <dc:Bounds x=\"280\" y=\"120\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Sales_Propuesta_di\" bpmnElement=\"Activity_Sales_Propuesta\">\n" +
-            "        <dc:Bounds x=\"430\" y=\"120\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Noc_Diseno_di\" bpmnElement=\"Activity_Noc_Diseno\">\n" +
+            "        <dc:Bounds x=\"460\" y=\"280\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"Activity_Sales_Finanzas_di\" bpmnElement=\"Activity_Sales_Finanzas\">\n" +
-            "        <dc:Bounds x=\"580\" y=\"280\" width=\"100\" height=\"80\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Sop_Instalacion_di\" bpmnElement=\"Activity_Sop_Instalacion\">\n" +
+            "        <dc:Bounds x=\"640\" y=\"440\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNShape id=\"EndEvent_Sales_di\" bpmnElement=\"EndEvent_Sales\">\n" +
-            "        <dc:Bounds x=\"740\" y=\"300\" width=\"36\" height=\"36\" />\n" +
+            "      <bpmndi:BPMNShape id=\"Activity_Fact_Alta_di\" bpmnElement=\"Activity_Fact_Alta\">\n" +
+            "        <dc:Bounds x=\"820\" y=\"600\" width=\"100\" height=\"80\" />\n" +
             "      </bpmndi:BPMNShape>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Sales_1_di\" bpmnElement=\"Flow_Sales_1\">\n" +
+            "      <bpmndi:BPMNShape id=\"EndEvent_Fib_di\" bpmnElement=\"EndEvent_Fib\">\n" +
+            "        <dc:Bounds x=\"1000\" y=\"622\" width=\"36\" height=\"36\" />\n" +
+            "      </bpmndi:BPMNShape>\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Fib_1_di\" bpmnElement=\"Flow_Fib_1\">\n" +
             "        <di:waypoint x=\"236\" y=\"158\" />\n" +
             "        <di:waypoint x=\"280\" y=\"158\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Sales_2_di\" bpmnElement=\"Flow_Sales_2\">\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Fib_2_di\" bpmnElement=\"Flow_Fib_2\">\n" +
             "        <di:waypoint x=\"380\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"430\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"410\" y=\"160\" />\n" +
+            "        <di:waypoint x=\"410\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"460\" y=\"320\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Sales_3_di\" bpmnElement=\"Flow_Sales_3\">\n" +
-            "        <di:waypoint x=\"530\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"160\" />\n" +
-            "        <di:waypoint x=\"555\" y=\"320\" />\n" +
-            "        <di:waypoint x=\"580\" y=\"320\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Fib_3_di\" bpmnElement=\"Flow_Fib_3\">\n" +
+            "        <di:waypoint x=\"560\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"590\" y=\"320\" />\n" +
+            "        <di:waypoint x=\"590\" y=\"480\" />\n" +
+            "        <di:waypoint x=\"640\" y=\"480\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
-            "      <bpmndi:BPMNEdge id=\"Flow_Sales_4_di\" bpmnElement=\"Flow_Sales_4\">\n" +
-            "        <di:waypoint x=\"680\" y=\"320\" />\n" +
-            "        <di:waypoint x=\"740\" y=\"320\" />\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Fib_4_di\" bpmnElement=\"Flow_Fib_4\">\n" +
+            "        <di:waypoint x=\"740\" y=\"480\" />\n" +
+            "        <di:waypoint x=\"770\" y=\"480\" />\n" +
+            "        <di:waypoint x=\"770\" y=\"640\" />\n" +
+            "        <di:waypoint x=\"820\" y=\"640\" />\n" +
+            "      </bpmndi:BPMNEdge>\n" +
+            "      <bpmndi:BPMNEdge id=\"Flow_Fib_5_di\" bpmnElement=\"Flow_Fib_5\">\n" +
+            "        <di:waypoint x=\"920\" y=\"640\" />\n" +
+            "        <di:waypoint x=\"1000\" y=\"640\" />\n" +
             "      </bpmndi:BPMNEdge>\n" +
             "    </bpmndi:BPMNPlane>\n" +
             "  </bpmndi:BPMNDiagram>\n" +
@@ -326,15 +429,7 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (Boolean.parseBoolean(System.getenv("FORCE_SEED")) || "true".equalsIgnoreCase(System.getProperty("force.seed"))) {
-            log.info("FORCE_SEED detectado. Ejecutando limpieza y recarga completa.");
-            forceSeed();
-            return;
-        }
-        if (usuarioRepository.count() > 0) {
-            log.info("CONEXIÓN A BASE DE DATOS EXITOSA: Sembrado omitido.");
-            return;
-        }
+        log.info("Limpieza y recarga completa de base de datos solicitada por el usuario.");
         forceSeed();
     }
 
@@ -345,152 +440,310 @@ public class DataSeeder implements CommandLineRunner {
         departamentoRepository.deleteAll();
         documentoRepository.deleteAll();
         workflowDefinitionRepository.deleteAll();
+        diagramaBpmnRepository.deleteAll();
+        reporteRepository.deleteAll();
+        userDeviceTokenRepository.deleteAll();
+        workflowCoreEventRepository.deleteAll();
+        workspaceGraphStateRepository.deleteAll();
 
         seedDepartamentos();
         seedUsuarios();
         seedWorkflowDefinitions();
         seedSolicitudes();
 
-        log.info("FRESH SEED FINALIZADO. Entorno listo.");
+        log.info("FRESH SEED FINALIZADO. Entorno de telecomunicaciones listo con datos limpios de prueba.");
     }
 
     private void seedDepartamentos() {
         departamentoRepository.saveAll(List.of(
-                buildDepto("Sistemas", "Tecnología, seguridad digital y soporte de infraestructura en la nube."),
-                buildDepto("Recursos Humanos", "Gestión del talento humano, bienestar corporativo y nóminas."),
-                buildDepto("Ventas", "Área comercial, captación de clientes corporativos y licencias de software."),
-                buildDepto("Finanzas", "Control del presupuesto anual, tesorería y auditorías de gastos.")
+                buildDepto("Ventas Corporativas", "Área encargada de la atención comercial a empresas, licitaciones de conectividad y ampliaciones de contratos de internet dedicado."),
+                buildDepto("Ingeniería de Red", "Ingenieros NOC, aprovisionamiento lógico, enrutamiento, asignación de IPs, IPsec VPN y administración de fibra óptica."),
+                buildDepto("Soporte Técnico", "Atención post-venta de incidentes, triaje, despacho de cuadrillas técnicas a campo y control de calidad de enlaces."),
+                buildDepto("Facturación y Legal", "Responsable de la redacción de adendas de contratos, ajuste de tarifas de facturación recurrente (MRR) y auditorías legales.")
         ));
     }
 
     private void seedUsuarios() {
         usuarioRepository.saveAll(List.of(
-                buildDefaultUser("admin", "admin", "Súper Administrador", RolUsuario.ADMINISTRADOR, "Sistemas"),
-                buildDefaultUser("revisor", "revisor", "Jefe de Talento Humano", RolUsuario.REVISOR, "Recursos Humanos"),
-                buildDefaultUser("ti", "ti", "Ingeniero Cloud Systems", RolUsuario.REVISOR, "Sistemas"),
-                buildDefaultUser("ventas", "ventas", "Director Comercial Global", RolUsuario.REVISOR, "Ventas"),
-                buildDefaultUser("finanzas", "finanzas", "Controlador Financiero", RolUsuario.REVISOR, "Finanzas"),
-                buildDefaultUser("solicitante", "solicitante", "Juan Solicitante (PM)", RolUsuario.SOLICITANTE, "Sistemas")
+                buildDefaultUser("admin", "admin", "Súper Administrador Telecom", RolUsuario.ADMINISTRADOR, "Ingeniería de Red"),
+                buildDefaultUser("ventas", "ventas", "Carlos Ventas (Comercial)", RolUsuario.REVISOR, "Ventas Corporativas"),
+                buildDefaultUser("noc", "noc", "Elena NOC (Redes)", RolUsuario.REVISOR, "Ingeniería de Red"),
+                buildDefaultUser("soporte", "soporte", "Mario Soporte (Helpdesk)", RolUsuario.REVISOR, "Soporte Técnico"),
+                buildDefaultUser("facturacion", "facturacion", "Silvia Facturación (Legal)", RolUsuario.REVISOR, "Facturación y Legal"),
+                buildDefaultUser("revisor", "revisor", "Andrés Revisor (Auditor Técnico)", RolUsuario.REVISOR, "Ingeniería de Red"),
+                buildDefaultUser("solicitante", "solicitante", "Juan Solicitante (Cliente)", RolUsuario.SOLICITANTE, "Ventas Corporativas"),
+                buildDefaultUser("cliente2", "cliente2", "María Cliente (Corp. Global)", RolUsuario.SOLICITANTE, "Ventas Corporativas"),
+                buildDefaultUser("cliente3", "cliente3", "Pedro Cliente (Banco Santa Cruz)", RolUsuario.SOLICITANTE, "Ventas Corporativas"),
+                buildDefaultUser("pepito", "pepito", "Pepito Cliente (Instalación de Fibra)", RolUsuario.SOLICITANTE, "Ventas Corporativas")
         ));
     }
 
     private void seedWorkflowDefinitions() {
         workflowDefinitionRepository.save(WorkflowDefinition.builder()
-                .key("procurement-workflow").name("Proceso de Compras").description("Gestión de adquisiciones y presupuestos").xml(PROCUREMENT_XML)
-                .editadoPor("admin").departamentoEditor("Sistemas").version(1).build());
+                .key("internet-expansion-workflow").name("Ampliación de Contrato de Internet").description("Gestión de ampliaciones de ancho de banda y firmas de adendas de fibra óptica").xml(INTERNET_EXPANSION_XML)
+                .editadoPor("admin").departamentoEditor("Ingeniería de Red").version(1).build());
 
         workflowDefinitionRepository.save(WorkflowDefinition.builder()
-                .key("hr-recruitment-workflow").name("Proceso de Selección y Onboarding").description("Flujo de contratación de personal e inducción").xml(RECRUITMENT_XML)
-                .editadoPor("admin").departamentoEditor("Recursos Humanos").version(1).build());
+                .key("tech-support-workflow").name("Soporte Técnico de Alta Prioridad").description("Flujo de diagnóstico, reparación y comisionamiento de enlaces de datos corporativos").xml(TECH_SUPPORT_XML)
+                .editadoPor("admin").departamentoEditor("Soporte Técnico").version(1).build());
 
         workflowDefinitionRepository.save(WorkflowDefinition.builder()
-                .key("sales-discount-workflow").name("Proceso Comercial y Descuentos").description("Aprobación de márgenes y descuentos comerciales").xml(SALES_XML)
-                .editadoPor("admin").departamentoEditor("Ventas").version(1).build());
+                .key("data-discount-workflow").name("Aprobación de Descuentos Especiales").description("Aprobación de propuestas comerciales de tarifas especiales para planes de datos masivos").xml(DATA_DISCOUNT_XML)
+                .editadoPor("admin").departamentoEditor("Ventas Corporativas").version(1).build());
+
+        workflowDefinitionRepository.save(WorkflowDefinition.builder()
+                .key("fiber-installation-workflow").name("Aprovisionamiento e Instalación de Fibra").description("Proceso de factibilidad, diseño de red, fusión de fibra y activación de servicio GPON").xml(FIBER_INSTALLATION_XML)
+                .editadoPor("admin").departamentoEditor("Ventas Corporativas").version(1).build());
     }
 
     private void seedSolicitudes() {
-        // --- 1. SOLICITUDES DE COMPRAS ---
+        // --- 1. SOLICITUDES DE AMPLIACIÓN DE INTERNET ---
         SolicitudWorkflow s1 = crearSolicitudCompleta(
-                "Ampliación Infraestructura AWS - Campaña Q4",
-                "Debido al drástico incremento de tráfico proyectado para la campaña de fin de año, solicitamos la adquisición de 3 instancias EC2 reservadas tipo m5.2xlarge, un balanceador de carga redundante (ALB) y una base de datos RDS Aurora PostgreSQL de alto rendimiento con réplica Multi-AZ. Presupuesto estimado: $14,500 USD anuales.",
-                Prioridad.URGENTE, "Sistemas", "solicitante", EstadoWorkflow.EN_REVISION, "ti",
-                "procurement-workflow", "Activity_Sys1", "Analizar Requerimientos");
+                "Ampliación de Ancho de Banda a 10 Gbps - Nexus Bank",
+                "El cliente Nexus Bank solicita duplicar la velocidad contratada en su enlace principal dedicado, subiendo de 5 Gbps a 10 Gbps simétricos sobre fibra óptica redundante. Requiere la validación comercial preliminar, la cotización de los nuevos transceptores SFP+ de 10G por Ingeniería, y el posterior ajuste contractual por Facturación.",
+                Prioridad.URGENTE, "Ventas Corporativas", "solicitante", EstadoWorkflow.EN_REVISION, "ventas",
+                "internet-expansion-workflow", "Activity_Vta_Comercial", "Validar Viabilidad Comercial");
 
         SolicitudWorkflow s2 = crearSolicitudCompleta(
-                "Renovación Anual 25 Licencias Salesforce Enterprise",
-                "Adquisición del plan anual para 25 licencias Enterprise de Salesforce CRM para el equipo de ventas internacionales. Permitirá unificar la gestión de oportunidades corporativas y la automatización de flujos de prospección.",
-                Prioridad.ALTA, "Ventas", "solicitante", EstadoWorkflow.EN_REVISION, "ventas",
-                "procurement-workflow", "Activity_Venta1", "Aprobación Presupuesto");
+                "Upgrade de Enlace de Fibra Óptica - Corporación Global",
+                "Solicitud de incremento de capacidad del enlace secundario de contingencia a 1 Gbps simétrico. Viabilidad comercial previamente aprobada por el área de Ventas Corporativas. Pasa a Ingeniería de Red para asignación del direccionamiento de red, estudio técnico de holgura en el splitter óptico y aprovisionamiento lógico en ruteadores perimetrales.",
+                Prioridad.ALTA, "Ingeniería de Red", "solicitante", EstadoWorkflow.EN_REVISION, "noc",
+                "internet-expansion-workflow", "Activity_Noc_Estudio", "Estudio Técnico e Incremento de Capacidad");
 
+        // --- 2. SOLICITUD DE SOPORTE TÉCNICO ---
         SolicitudWorkflow s3 = crearSolicitudCompleta(
-                "Seguro Médico Familiar y Dental MetLife 2026",
-                "Renovación y actualización de la póliza de seguro médico colectivo corporativo para el ejercicio 2026. Se incluye el beneficio adicional de ortodoncia básica para empleados permanentes con copago del 20%.",
-                Prioridad.MEDIA, "Finanzas", "solicitante", EstadoWorkflow.EN_REVISION, "finanzas",
-                "procurement-workflow", "Activity_RRHH1", "Firma de Contrato");
+                "Inestabilidad y Caída de Paquetes en Enlace Dedicado - Planta Industrial",
+                "El cliente reporta microcortes recurrentes e incremento crítico de la latencia a más de 120ms en su enlace de fibra óptica dedicado principal que conecta la Planta Industrial de Nexus Bank. Se requiere un diagnóstico inmediato de la potencia óptica (dBm) por parte de Soporte Técnico y posible asignación de cuadrilla de campo si se detecta atenuación severa en el tramo de última milla.",
+                Prioridad.URGENTE, "Soporte Técnico", "solicitante", EstadoWorkflow.EN_REVISION, "soporte",
+                "tech-support-workflow", "Activity_Sop_Diag", "Diagnóstico y Triaje Técnico");
 
-        // --- 2. SOLICITUD DE SELECCIÓN DE RRHH ---
-        SolicitudWorkflow s_hr = crearSolicitudCompleta(
-                "Contratación de Especialista Senior Java / Cloud",
-                "Se requiere incorporar al equipo de tecnología a un ingeniero senior backend con experiencia sólida en Java, Spring Boot y despliegues serverless en Kubernetes/Cloud Run, para dar soporte a los proyectos del núcleo transaccional.",
-                Prioridad.ALTA, "Recursos Humanos", "solicitante", EstadoWorkflow.EN_REVISION, "revisor",
-                "hr-recruitment-workflow", "Activity_HR_Revision", "Entrevista Inicial");
+        // --- 3. SOLICITUD DE DESCUENTO ---
+        SolicitudWorkflow s4 = crearSolicitudCompleta(
+                "Tarifa Especial y Descuento del 15% - Nexus Bank (300 Líneas Móviles)",
+                "Propuesta comercial de descuento del 15% para el plan masivo corporativo de 300 líneas móviles postpago con datos ilimitados. Requiere análisis de facturación, cálculo del margen bruto operativo mínimo aceptable y validación por la dirección financiera antes de la presentación final.",
+                Prioridad.MEDIA, "Facturación y Legal", "solicitante", EstadoWorkflow.EN_REVISION, "facturacion",
+                "data-discount-workflow", "Activity_Fact_Aprobacion", "Aprobación Financiera y Tarifaria");
 
-        // --- 3. SOLICITUD DE DESCUENTO EN VENTAS ---
-        SolicitudWorkflow s_sales = crearSolicitudCompleta(
-                "Descuento Extraordinario del 18% - Cuenta Globant",
-                "Propuesta comercial de descuento del 18% para el contrato corporativo multianual de soporte e integración tecnológica. Requiere validación del director financiero para asegurar los niveles de margen bruto mínimos requeridos.",
-                Prioridad.URGENTE, "Ventas", "solicitante", EstadoWorkflow.EN_REVISION, "ventas",
-                "sales-discount-workflow", "Activity_Sales_Propuesta", "Validación del Margen Comercial");
+        // --- 4. NUEVAS SOLICITUDES PARA ENRIQUECER EL CONJUNTO DE DATOS ---
+        
+        // SLA_CRITICO (Ingeniería de Red - cliente2)
+        SolicitudWorkflow s5 = crearSolicitudCompleta(
+                "Aprovisionamiento de VLANs y Prefijos IPv6 - DataCenter El Alto",
+                "Asignación urgente de direccionamiento IPv6 nativo de operador y configuración de ruteo dinámico BGP multi-homed para el nuevo DataCenter corporativo. Presenta retrasos por falta de confirmación de prefijo en el registro LACNIC.",
+                Prioridad.ALTA, "Ingeniería de Red", "cliente2", EstadoWorkflow.SLA_CRITICO, "noc",
+                "internet-expansion-workflow", "Activity_Noc_Estudio", "Estudio Técnico e Incremento de Capacidad");
 
-        // --- 4. SOLICITUD PENDIENTE SIN ASIGNAR ---
+        // BLOQUEADO (Soporte Técnico - cliente2)
+        SolicitudWorkflow s6 = crearSolicitudCompleta(
+                "Instalación Enlace Satelital VSAT - Campamento Minero San Cristóbal",
+                "Soporte técnico para el despliegue e instalación en campo de antena satelital VSAT de contingencia para telemetría SCADA. Bloqueado temporalmente debido a malas condiciones meteorológicas en la zona andina que impiden el izaje seguro de la torre.",
+                Prioridad.URGENTE, "Soporte Técnico", "cliente2", EstadoWorkflow.BLOQUEADO, "soporte",
+                "tech-support-workflow", "Activity_Noc_Intervencion", "Resolución e Intervención de Red");
+
+        // APROBADO (Facturación y Legal - cliente3)
+        SolicitudWorkflow s7 = crearSolicitudCompleta(
+                "Ampliación Red de Fibra para Sucursales - Supermercados Fidalga",
+                "Proyecto comercial y técnico para conectar 5 sucursales nuevas a la red metropolitana de fibra a 500 Mbps. El estudio técnico fue favorable y el contrato de adenda fue debidamente firmado por el representante legal del cliente.",
+                Prioridad.MEDIA, "Facturación y Legal", "cliente3", EstadoWorkflow.APROBADO, "facturacion",
+                "internet-expansion-workflow", "Activity_Fact_Adenda", "Firma de Adenda y Activación Comercial");
+
+        // RECHAZADO (Facturación y Legal - cliente3)
+        SolicitudWorkflow s8 = crearSolicitudCompleta(
+                "Propuesta de Descuento 35% por Volumen - Cooperativa Minera Litoral",
+                "Solicitud de tarifa ultra-reducida de internet dedicado para campamento. Rechazada por el Comité de Tarifas debido a que el margen bruto resultante (22%) se encuentra muy por debajo de la rentabilidad mínima estipulada del 45% sobre inversión de tendido.",
+                Prioridad.BAJA, "Facturación y Legal", "cliente3", EstadoWorkflow.RECHAZADO, "facturacion",
+                "data-discount-workflow", "Activity_Fact_Aprobacion", "Aprobación Financiera y Tarifaria");
+
+        // --- 5. SOLICITUDES PENDIENTES SIN ASIGNAR ---
         crearSolicitudCompleta(
-                "Mantenimiento Aire Acondicionado DataCenter Piso 3",
-                "Servicio preventivo semestral del sistema de enfriamiento de precisión en el Data Center local para evitar riesgos de sobrecalentamiento en servidores on-premise.",
-                Prioridad.BAJA, "Sistemas", "solicitante", EstadoWorkflow.PENDIENTE, null,
+                "Instalación de Enlace MPLS Secundario - Oficina Sucursal Norte",
+                "Requerimiento de instalación física y cableado estructurado para configurar un enlace de contingencia MPLS de 100 Mbps en la sucursal norte del cliente. Pendiente de asignación inicial por soporte técnico.",
+                Prioridad.BAJA, "Soporte Técnico", "solicitante", EstadoWorkflow.PENDIENTE, null,
                 null, null, null);
 
-        // Documentos
-        seedDocumentoColaborativo(s1, "Dossier_Tecnico_AWS_2026", "Cotización detallada y especificaciones de instancias reservadas.", 
-                "### COTIZACIÓN CLOUD SERVICIOS AWS Q4\n\n" +
-                "| Recurso | Configuración | Cantidad | Costo Mensual |\n" +
+        crearSolicitudCompleta(
+                "Auditoría de Enrutamiento BGP - Bloque de IPs IPv4 Agotadas",
+                "Revisión de tablas de ruteo global ante posible secuestro de prefijos IP del pool asignado al segmento corporativo. Pendiente de vinculación por supervisor.",
+                Prioridad.ALTA, "Ingeniería de Red", "cliente3", EstadoWorkflow.PENDIENTE, null,
+                null, null, null);
+
+        // Documentos de prueba específicos de telecomunicaciones
+        seedDocumentoColaborativo(s1, "Informe_Factibilidad_Comercial_NexusBank", "Análisis de rentabilidad y cotización de equipamiento SFP+ de 10G.", 
+                "### INFORME DE FACTIBILIDAD COMERCIAL - NEXUS BANK\n\n" +
+                "| Concepto | Detalle Técnico | Tarifa Mensual (USD) | Costo Instalación (Costo Único) |\n" +
                 "| :--- | :--- | :---: | :---: |\n" +
-                "| **EC2 m5.2xlarge** | Reservado 1 año (No Upfront) | 3 | $640.00 |\n" +
-                "| **RDS Aurora DB** | DB.r6g.2xlarge + Multi-AZ | 1 | $480.00 |\n" +
-                "| **EBS Storage** | gp3 SSD 2TB Redundante | 1 | $190.00 |\n" +
-                "| **ALB + Data transfer** | Balanced Redundancy | - | $110.00 |\n\n" +
-                "**Total Estimado Mensual:** $1,420.00 USD\n" +
-                "**Ahorro Aplicado por Reserva:** 32.5%\n\n" +
-                "**Justificación Técnica:** Soportará el pico de 15,000 transacciones concurrentes simultáneas estimadas para el Black Friday.", "solicitante");
+                "| **Ancho de Banda Actual** | 5 Gbps Dedicado Simétrico | $2,500.00 | - |\n" +
+                "| **Ancho de Banda Nuevo** | 10 Gbps Dedicado Simétrico | $4,200.00 | - |\n" +
+                "| **Equipamiento SFP+ 10G** | Transceptores Cisco y Patchcore Monomodo | - | $350.00 |\n" +
+                "| **SLA Garantizado** | 99.98% de disponibilidad anual | Incluido | - |\n\n" +
+                "**Incremento Neto Recurrente Mensual (MRR):** +$1,700.00 USD\n" +
+                "**Plazo Contractual Sugerido:** 24 meses renovable automáticamente.\n\n" +
+                "**Justificación:** El cliente Nexus Bank se encuentra expandiendo su core bancario y la replicación Multi-AZ de su base de datos requiere mayor throughput nocturno para evitar encolamientos.", "solicitante");
 
-        seedDocumentoColaborativo(s3, "Contrato_Seguros_MetLife_2026", "Borrador de términos y condiciones de coberturas colectivas.", 
-                "### CONTRATO DE COBERTURA MÉDICA CORPORATIVA\n\n" +
-                "- **Aseguradora:** MetLife Seguros Internacionales S.A.\n" +
-                "- **Vigencia:** 01 de Enero 2026 al 31 de Diciembre 2026.\n" +
-                "- **Elegibilidad:** Todo el personal con contrato indefinido activo.\n\n" +
-                "#### Beneficios Clave:\n" +
-                "1. **Atención Médica Primaria:** 100% libre de deducible en red preferente.\n" +
-                "2. **Hospitalización:** Cobertura al 90% en cirugías programadas y accidentes.\n" +
-                "3. **Dental Ampliado:** Copago de $10 USD para consultas de profilaxis corporativas.\n\n" +
-                "**Responsable Operativo:** RRHH (Talento Humano).", "revisor");
+        seedDocumentoColaborativo(s2, "Aprovisionamiento_Logico_Red_NOC", "Plano lógico de enrutamiento y puertos asignados para el upgrade.", 
+                "### PLAN DE DIRECCIONAMIENTO E IP DE INGENIERÍA - NOC\n\n" +
+                "- **Cliente:** Corporación Global\n" +
+                "- **ID de Circuito:** L2-FIB-CORP-98831-SCZ\n" +
+                "- **Ancho de Banda Configurado:** 1 Gbps (Simétrico)\n\n" +
+                "#### Direccionamiento WAN Asignado:\n" +
+                "- **IP Prefijo WAN:** 187.45.190.224/30\n" +
+                "- **IP Gateway Operador:** 187.45.190.225 (Router PE-03-SCZ)\n" +
+                "- **IP WAN Cliente:** 187.45.190.226 (Router CE-01-Global)\n" +
+                "- **Prefijo LAN /29 Público:** 187.45.195.40/29\n\n" +
+                "#### Configuración del Puerto en Switch PE:\n" +
+                "```bash\n" +
+                "interface TenGigabitEthernet0/1/2\n" +
+                " description Upgrade_Enlace_Corp_Global_VLAN_891\n" +
+                " switchport trunk allowed vlan 891\n" +
+                " service-policy input 1GBPS_SHAPING\n" +
+                " service-policy output 1GBPS_SHAPING\n" +
+                "```", "noc");
 
-        seedDocumentoColaborativo(s_hr, "Perfil_Candidato_Java_Senior", "Requerimientos y currículum del candidato preseleccionado.", 
-                "### PERFIL DE CARGO: INGENIERO BACKEND SENIOR JAVA\n\n" +
-                "#### Habilidades Clave:\n" +
-                "- **Lenguajes:** Java 17+, SQL, TypeScript.\n" +
-                "- **Frameworks:** Spring Boot 3.x, Spring Cloud, Hibernate.\n" +
-                "- **Bases de Datos:** MongoDB, PostgreSQL, Redis.\n" +
-                "- **Cloud:** AWS (ECS, RDS, S3), GCP Cloud Run.\n\n" +
-                "#### Rango Salarial Ofrecido:\n" +
-                "- Rango: $3,800 - $4,500 USD netos mensuales acorde a experiencia.", "revisor");
+        seedDocumentoColaborativo(s3, "Diagnostico_Potencia_Optica_OTDR", "Registro de mediciones de reflectometría (OTDR) del tramo de fibra.", 
+                "### DIAGNÓSTICO TÉCNICO DE ENLACE DE FIBRA ÓPTICA\n\n" +
+                "- **ID de Circuito:** L1-FIB-NEXUS-00192-CBBA\n" +
+                "- **Medición con OTDR:** Realizado a las 19:15 local.\n\n" +
+                "#### Resultados de Potencia Óptica:\n" +
+                "1. **Potencia de Transmisión (TX) PE:** -3.2 dBm (Normal)\n" +
+                "2. **Potencia de Recepción (RX) CE:** -29.8 dBm (**CRÍTICO - Alta Atenuación**)\n" +
+                "3. **Pérdida Total del Enlace:** 26.6 dB (Límite aceptable es 18 dB)\n\n" +
+                "#### Diagnóstico OTDR:\n" +
+                "- Se detecta una anomalía de reflexión (posible microdoblez o empalme sucio) en la caja de paso #4 situada en la Av. Doble Vía, Km 3.5.\n\n" +
+                "**Acción Recomendada:** Despachar cuadrilla nocturna para limpieza del conector o fusión de fibra.", "soporte");
+
+        seedDocumentoColaborativo(s4, "Analisis_Margen_Tarifario_Postpago", "Cálculo de costo marginal y aprobación de descuento del 15% de telefonía corporativa.", 
+                "### ANÁLISIS DE RENTABILIDAD Y MÁRGENES - COMITÉ DE TARIFAS\n\n" +
+                "- **Servicio:** 300 Líneas Móviles Postpago Corporativas (Ilimitadas)\n" +
+                "- **Tarifa Estándar Mensual:** $35.00 USD por línea\n" +
+                "- **Tarifa Especial Solicitada (-15%):** $29.75 USD por línea\n\n" +
+                "#### Estructura de Costos por Línea:\n" +
+                "| Concepto Costo | Costo Marginal Mensual | Porcentaje sobre Venta ($29.75) |\n" +
+                "| :--- | :--- | :--- |\n" +
+                "| **Costo Interconexión** | $4.20 USD | 14.1% |\n" +
+                "| **Soporte y Operación** | $3.00 USD | 10.1% |\n" +
+                "| **Amortización Red** | $5.50 USD | 18.5% |\n" +
+                "| **Margen Bruto Unitario** | **$17.05 USD** | **57.3%** |\n\n" +
+                "**Conclusión:** El margen operativo del 57.3% supera con holgura el piso de rentabilidad mínima corporativa establecido en 45%. Se recomienda la aprobación del descuento.", "ventas");
+
+        // --- 6. PROCESO DE INSTALACIÓN DE FIBRA ÓPTICA PARA PEPITO ---
+        // Representa cada una de las 4 etapas del flujo de instalación GPON para que Pepito vea su progreso
+        
+        // Etapa 1: Ventas - "Validar Viabilidad y Cobertura"
+        SolicitudWorkflow sPepito1 = crearSolicitudCompleta(
+                "Instalación de Fibra Óptica Residencial - Pepito",
+                "Solicitud de instalación de internet de fibra óptica de alta velocidad (300 Mbps simétricos) para la residencia de Pepito. Pendiente de validación de cobertura física y distancia del tramo hasta la caja de distribución NAP más cercana.",
+                Prioridad.URGENTE, "Ventas Corporativas", "pepito", EstadoWorkflow.EN_REVISION, "ventas",
+                "fiber-installation-workflow", "Activity_Vta_Factibilidad", "Validar Viabilidad y Cobertura");
+
+        // Etapa 2: Ingeniería - "Diseño de Red y Puerto GPON"
+        SolicitudWorkflow sPepito2 = crearSolicitudCompleta(
+                "Instalación de Enlace Fibra Pyme - Pepito S.R.L.",
+                "Solicitud de fibra simétrica comercial para la oficina de Pepito S.R.L. La factibilidad comercial y de cobertura física ya fue validada favorablemente por Ventas. Actualmente en manos de Ingeniería de Red para el diseño de ruta, asignación de puerto de splitter óptico y asignación del puerto GPON en la OLT.",
+                Prioridad.ALTA, "Ingeniería de Red", "pepito", EstadoWorkflow.EN_REVISION, "noc",
+                "fiber-installation-workflow", "Activity_Noc_Diseno", "Diseño de Red y Puerto GPON");
+
+        // Etapa 3: Soporte - "Instalación Física y Fusión en Domicilio"
+        SolicitudWorkflow sPepito3 = crearSolicitudCompleta(
+                "Instalación de Fibra Simétrica - Oficina Central Pepito",
+                "Fusión de fibra y tendido de última milla para la oficina central. La viabilidad técnica y el diseño lógico en OLT ya están configurados por Ingeniería. Actualmente asignado a la cuadrilla de Soporte Técnico para realizar el tendido del cable drop, fusionar en la caja NAP asignada, e instalar y calibrar la ONU en el domicilio.",
+                Prioridad.URGENTE, "Soporte Técnico", "pepito", EstadoWorkflow.EN_REVISION, "soporte",
+                "fiber-installation-workflow", "Activity_Sop_Instalacion", "Instalación Física y Fusión en Domicilio");
+
+        // Etapa 4: Facturación - "Alta de Suscripción y Activación de Cuenta"
+        SolicitudWorkflow sPepito4 = crearSolicitudCompleta(
+                "Activación y Alta de Servicio Fibra - Pepito Corporativo",
+                "La instalación de cableado y fusión de fibra en el domicilio de Pepito ha culminado exitosamente con un nivel de potencia de -19.5 dBm. El servicio está listo en capa física. Pasa al área de Facturación y Legal para registrar el plan recurrente, dar de alta la cuenta de facturación y habilitar las credenciales PPPoE de navegación.",
+                Prioridad.MEDIA, "Facturación y Legal", "pepito", EstadoWorkflow.EN_REVISION, "facturacion",
+                "fiber-installation-workflow", "Activity_Fact_Alta", "Alta de Suscripción y Activación de Cuenta");
+
+        // Documentos de Pepito
+        seedDocumentoColaborativo(sPepito1, "Formulario_Solicitud_Fibra_Pepito", "Formulario de registro inicial y validación de cobertura en calle.", 
+                "### FORMULARIO DE SOLICITUD DE FIBRA ÓPTICA RESIDENCIAL\n\n" +
+                "- **Cliente:** Pepito (José Pérez)\n" +
+                "- **Dirección de Residencia:** Av. Busch, Calle 4, Nro 450\n" +
+                "- **Plan Seleccionado:** Fibra GPON 300 Mbps Hogar\n" +
+                "- **Costo Mensual Base:** $39.00 USD / mes\n\n" +
+                "#### Estado de Validación de Cobertura:\n" +
+                "- **Distancia estimada a la caja NAP más cercana:** En medición de campo por el agente de ventas.\n" +
+                "- **Disponibilidad de puertos en splitter:** Confirmado preliminarmente por mapa GIS.\n\n" +
+                "**Nota del agente:** El cliente solicita la instalación a la brevedad debido a que realiza teletrabajo continuo.", "pepito");
+
+        seedDocumentoColaborativo(sPepito2, "Estudio_Diseno_Red_PepitoPyme", "Plano lógico e informe técnico de puerto GPON asignado en OLT.", 
+                "### INFORME DE INGENIERÍA DE RED - DISEÑO GPON PYME\n\n" +
+                "- **Cliente:** Pepito S.R.L. (Sucursal Equipetrol)\n" +
+                "- **Velocidad Contratada:** 150 Mbps Simétrico Pyme\n\n" +
+                "#### Parámetros Técnicos de Diseño:\n" +
+                "1. **OLT Central:** OLT-SCZ-EQUIPETROL-02\n" +
+                "2. **Tarjeta / Puerto GPON:** Board 0, Slot 3, Port 4\n" +
+                "3. **Caja NAP de Distribución:** NAP-EQ-12 (Capacidad: 1:16, Puertos Libres: 3)\n" +
+                "4. **Puerto Asignado en Caja NAP:** Puerto 6\n" +
+                "5. **Dirección IP LAN CE:** 192.168.100.1/24 (Asignado por DHCP de la ONU)\n\n" +
+                "**Aprobado por NOC:** Listo para envío de orden de trabajo física.", "noc");
+
+        seedDocumentoColaborativo(sPepito3, "Orden_Trabajo_Instalacion_Fisica_Pepito", "Orden de despacho técnico en campo para tendido de acometida y fusión.", 
+                "### ORDEN DE TRABAJO TÉCNICA DE INSTALACIÓN - SOPORTE TÉCNICO\n\n" +
+                "- **Cliente:** Oficina Central Pepito (Calle Florida Nro 12)\n" +
+                "- **Cuadrilla Técnica Despachada:** Cuadrilla #3 (Ing. José Choque)\n\n" +
+                "#### Lista de Tareas en Campo:\n" +
+                "- [x] Tendido de cable drop monomodo de exterior (110 metros utilizados).\n" +
+                "- [x] Fusión de fibra óptica en puerto 4 de caja NAP-FL-08.\n" +
+                "- [ ] Armado del conector rápido en el domicilio del cliente.\n" +
+                "- [ ] Conexión y calibración de potencia óptica en la ONU (Modelo Huawei HG8245H).\n" +
+                "- [ ] Verificación de potencia (Umbral óptimo: entre -15 y -23 dBm).\n\n" +
+                "**Comentarios en campo:** El tendido aéreo se realizó sin incidentes. Pendiente de fusión final en domicilio.", "soporte");
+
+        seedDocumentoColaborativo(sPepito4, "Contrato_Suscripcion_Digital_Pepito", "Contrato de adhesión para el aprovisionamiento y facturación del servicio.", 
+                "### CONTRATO DE ADHESIÓN Y ALTA DE SUSCRIPCIÓN - GPON HOGAR\n\n" +
+                "- **Contrato Nro:** CONT-FIB-PEPITO-10029\n" +
+                "- **Suscriptor:** Pepito (José Pérez)\n" +
+                "- **Plan Activo:** Plan Fibra Premium 500 Mbps Corporativo\n" +
+                "- **Cargo Fijo Recurrente (MRR):** $79.00 USD / mes\n" +
+                "- **Ciclo de Facturación:** Del 1 al 5 de cada mes calendario\n\n" +
+                "#### Verificación Física de Entrega:\n" +
+                "- **Potencia de Recepción (RX ONU):** -19.5 dBm (Excelente señal)\n" +
+                "- **Dirección MAC de la ONU:** E0:24:7F:A1:C2:5E\n" +
+                "- **Credenciales PPPoE Generadas:** `pepito_fibra@nexus` / `key98321`\n\n" +
+                "**Aprobación del área de Facturación:** El contrato ha sido validado y archivado digitalmente. Cuenta activa en sistema de cobros.", "facturacion");
 
         // Sincronizar el XML con los códigos de los tickets creados
-        actualizarXmlConSolicitudes(s1, s2, s3, s_hr, s_sales);
+        actualizarXmlConSolicitudes(s1, s2, s3, s4);
+        actualizarXmlFiberInstallation(sPepito1, sPepito2, sPepito3, sPepito4);
     }
 
-    private void actualizarXmlConSolicitudes(SolicitudWorkflow sys, SolicitudWorkflow vta, SolicitudWorkflow fin, 
-                                             SolicitudWorkflow hr, SolicitudWorkflow sales) {
-        // 1. Procurement
-        workflowDefinitionRepository.findByKey("procurement-workflow").ifPresent(def -> {
+    private void actualizarXmlConSolicitudes(SolicitudWorkflow sys, SolicitudWorkflow noc, SolicitudWorkflow sop, SolicitudWorkflow billing) {
+        // 1. internet-expansion-workflow
+        workflowDefinitionRepository.findByKey("internet-expansion-workflow").ifPresent(def -> {
             String xml = def.getXml();
-            xml = xml.replace("id=\"Activity_Sys1\" name=\"Analizar Requerimientos\"", "id=\"Activity_Sys1\" name=\"Analizar Requerimientos\" wf:solicitudes=\"" + sys.getCodigoSeguimiento() + "\"");
-            xml = xml.replace("id=\"Activity_Venta1\" name=\"Aprobación Presupuesto\"", "id=\"Activity_Venta1\" name=\"Aprobación Presupuesto\" wf:solicitudes=\"" + vta.getCodigoSeguimiento() + "\"");
-            xml = xml.replace("id=\"Activity_RRHH1\" name=\"Firma de Contrato\"", "id=\"Activity_RRHH1\" name=\"Firma de Contrato\" wf:solicitudes=\"" + fin.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Vta_Comercial\" name=\"Validar Viabilidad Comercial\"", "id=\"Activity_Vta_Comercial\" name=\"Validar Viabilidad Comercial\" wf:solicitudes=\"" + sys.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Noc_Estudio\" name=\"Estudio Técnico e Incremento de Capacidad\"", "id=\"Activity_Noc_Estudio\" name=\"Estudio Técnico e Incremento de Capacidad\" wf:solicitudes=\"" + noc.getCodigoSeguimiento() + "\"");
             def.setXml(xml);
             workflowDefinitionRepository.save(def);
         });
 
-        // 2. Recruitment
-        workflowDefinitionRepository.findByKey("hr-recruitment-workflow").ifPresent(def -> {
+        // 2. tech-support-workflow
+        workflowDefinitionRepository.findByKey("tech-support-workflow").ifPresent(def -> {
             String xml = def.getXml();
-            xml = xml.replace("id=\"Activity_HR_Revision\" name=\"Entrevista Inicial\"", "id=\"Activity_HR_Revision\" name=\"Entrevista Inicial\" wf:solicitudes=\"" + hr.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Sop_Diag\" name=\"Diagnóstico y Triaje Técnico\"", "id=\"Activity_Sop_Diag\" name=\"Diagnóstico y Triaje Técnico\" wf:solicitudes=\"" + sop.getCodigoSeguimiento() + "\"");
             def.setXml(xml);
             workflowDefinitionRepository.save(def);
         });
 
-        // 3. Sales Discount
-        workflowDefinitionRepository.findByKey("sales-discount-workflow").ifPresent(def -> {
+        // 3. data-discount-workflow
+        workflowDefinitionRepository.findByKey("data-discount-workflow").ifPresent(def -> {
             String xml = def.getXml();
-            xml = xml.replace("id=\"Activity_Sales_Propuesta\" name=\"Validación del Margen Comercial\"", "id=\"Activity_Sales_Propuesta\" name=\"Validación del Margen Comercial\" wf:solicitudes=\"" + sales.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Fact_Aprobacion\" name=\"Aprobación Financiera y Tarifaria\"", "id=\"Activity_Fact_Aprobacion\" name=\"Aprobación Financiera y Tarifaria\" wf:solicitudes=\"" + billing.getCodigoSeguimiento() + "\"");
+            def.setXml(xml);
+            workflowDefinitionRepository.save(def);
+        });
+    }
+
+    private void actualizarXmlFiberInstallation(SolicitudWorkflow fibVta, SolicitudWorkflow fibNoc, SolicitudWorkflow fibSop, SolicitudWorkflow fibFact) {
+        workflowDefinitionRepository.findByKey("fiber-installation-workflow").ifPresent(def -> {
+            String xml = def.getXml();
+            xml = xml.replace("id=\"Activity_Vta_Factibilidad\" name=\"Validar Viabilidad y Cobertura\"", "id=\"Activity_Vta_Factibilidad\" name=\"Validar Viabilidad y Cobertura\" wf:solicitudes=\"" + fibVta.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Noc_Diseno\" name=\"Diseño de Red y Puerto GPON\"", "id=\"Activity_Noc_Diseno\" name=\"Diseño de Red y Puerto GPON\" wf:solicitudes=\"" + fibNoc.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Sop_Instalacion\" name=\"Instalación Física y Fusión en Domicilio\"", "id=\"Activity_Sop_Instalacion\" name=\"Instalación Física y Fusión en Domicilio\" wf:solicitudes=\"" + fibSop.getCodigoSeguimiento() + "\"");
+            xml = xml.replace("id=\"Activity_Fact_Alta\" name=\"Alta de Suscripción y Activación de Cuenta\"", "id=\"Activity_Fact_Alta\" name=\"Alta de Suscripción y Activación de Cuenta\" wf:solicitudes=\"" + fibFact.getCodigoSeguimiento() + "\"");
             def.setXml(xml);
             workflowDefinitionRepository.save(def);
         });
@@ -507,7 +760,21 @@ public class DataSeeder implements CommandLineRunner {
         s.registrarTransicion(null, EstadoWorkflow.PENDIENTE, creador, "SOLICITANTE", "Registro inicial de solicitud en el panel de control.");
         if (estadoFinal != EstadoWorkflow.PENDIENTE) {
             s.setUsuarioAsignado(revisor);
-            s.registrarTransicion(EstadoWorkflow.PENDIENTE, EstadoWorkflow.EN_REVISION, revisor, "REVISOR", "Iniciada auditoría y análisis en etapa: " + tareaNombre);
+            s.registrarTransicion(EstadoWorkflow.PENDIENTE, EstadoWorkflow.EN_REVISION, revisor, "REVISOR", "Iniciada auditoría y análisis en etapa: " + (tareaNombre != null ? tareaNombre : "Revisión"));
+            
+            if (estadoFinal != EstadoWorkflow.EN_REVISION) {
+                String descEstado = "Tránsito de estado completado hacia: " + estadoFinal;
+                if (estadoFinal == EstadoWorkflow.APROBADO) {
+                    descEstado = "La solicitud ha sido aprobada de manera conforme por todas las áreas responsables.";
+                } else if (estadoFinal == EstadoWorkflow.RECHAZADO) {
+                    descEstado = "La solicitud ha sido rechazada tras detectar discrepancias técnicas o de factibilidad.";
+                } else if (estadoFinal == EstadoWorkflow.SLA_CRITICO) {
+                    descEstado = "La solicitud presenta demora de tiempo. Alerta de SLA Crítico enviada.";
+                } else if (estadoFinal == EstadoWorkflow.BLOQUEADO) {
+                    descEstado = "La solicitud se encuentra bloqueada a la espera de documentación complementaria.";
+                }
+                s.registrarTransicion(EstadoWorkflow.EN_REVISION, estadoFinal, revisor != null ? revisor : "system", "REVISOR", descEstado);
+            }
         }
         return solicitudRepository.save(s);
     }
@@ -523,8 +790,25 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedDocumentoColaborativo(SolicitudWorkflow solicitud, String nombre, String desc, String contenido, String creador) {
         Documento documento = Documento.builder()
-                .solicitudId(solicitud.getId()).nombre(nombre).descripcion(desc).tipo("COLLABORATIVE").versionActual(1).creadoPor(creador)
-                .fechaCreacion(LocalDateTime.now()).fechaActualizacion(LocalDateTime.now()).contenidoColaborativo(contenido).build();
+                .solicitudId(solicitud.getId())
+                .nombre(nombre)
+                .descripcion(desc)
+                .tipo("COLLABORATIVE")
+                .versionActual(1)
+                .creadoPor(creador)
+                .fechaCreacion(LocalDateTime.now())
+                .fechaActualizacion(LocalDateTime.now())
+                .contenidoColaborativo(contenido)
+                .build();
+        
+        documento.agregarVersion(Documento.VersionDocumento.builder()
+                .version(1)
+                .subidoPor(creador)
+                .fechaSubida(LocalDateTime.now())
+                .comentarioCambio("Versión inicial creada por el sistema")
+                .contenidoColaborativoSnapshot(contenido)
+                .build());
+                
         documentoRepository.save(documento);
     }
 }

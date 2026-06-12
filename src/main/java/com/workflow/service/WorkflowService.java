@@ -108,10 +108,10 @@ public interface WorkflowService {
     /**
      * Asocia una definición de proceso BPMN y establece la tarea inicial.
      */
-    SolicitudResponse asociarProcesoBpm(String id, String workflowDefinitionId, String tareaId, String tareaNombre, String usuarioResponsable, String rolUsuario);
+    SolicitudResponse asociarProcesoBpm(String id, String workflowDefinitionId, String tareaId, String tareaNombre, String usuarioResponsable, RolUsuario rolUsuario, String departamentoUsuario);
 
     /**
      * Mueve la solicitud a otra tarea en el proceso BPMN.
      */
-    SolicitudResponse cambiarTareaBpm(String id, String flowId, String tareaId, String tareaNombre, String usuarioResponsable, String rolUsuario);
+    SolicitudResponse cambiarTareaBpm(String id, String flowId, String tareaId, String tareaNombre, String usuarioResponsable, RolUsuario rolUsuario, String departamentoUsuario);
 }

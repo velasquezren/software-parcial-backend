@@ -3,13 +3,15 @@ package com.workflow.controller;
 import com.workflow.domain.model.ArchivoAdjunto;
 import com.workflow.dto.response.ApiResponse;
 import com.workflow.dto.response.ArchivoAdjuntoResponse;
+import com.workflow.dto.response.ArchivoDetalladoResponse;
 import com.workflow.service.ArchivoStorageService;
+import com.workflow.repository.SolicitudWorkflowRepository;
+import com.workflow.repository.DocumentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +33,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ArchivoController {
 
     private final ArchivoStorageService storageService;
+    private final SolicitudWorkflowRepository solicitudRepository;
+    private final DocumentoRepository documentoRepository;
 
     /**
      * Sube uno o más archivos y retorna metadatos.
@@ -58,26 +62,79 @@ public class ArchivoController {
     }
 
     /**
+     * Retorna una lista consolidada de todos los archivos subidos al sistema (solicitudes y documentos).
+     */
+    @GetMapping("/todos")
+    @Operation(summary = "Listar todos los archivos", description = "Retorna una lista consolidada de todos los archivos subidos al sistema (solicitudes y documentos).")
+    public ResponseEntity<ApiResponse<List<ArchivoDetalladoResponse>>> listarTodosLosArchivos() {
+        log.info("GET /api/v1/archivos/todos");
+        List<ArchivoDetalladoResponse> archivos = new java.util.ArrayList<>();
+
+        // 1. Obtener archivos de SolicitudWorkflow
+        solicitudRepository.findAll().forEach(solicitud -> {
+            if (solicitud.getArchivosAdjuntos() != null) {
+                solicitud.getArchivosAdjuntos().forEach(adjunto -> {
+                    archivos.add(ArchivoDetalladoResponse.builder()
+                            .id(adjunto.getId())
+                            .nombreOriginal(adjunto.getNombreOriginal())
+                            .nombreAlmacenado(adjunto.getNombreAlmacenado())
+                            .tipoContenido(adjunto.getTipoContenido())
+                            .tamanoBytes(adjunto.getTamanoBytes())
+                            .subidoPor(adjunto.getSubidoPor())
+                            .fechaSubida(adjunto.getFechaSubida())
+                            .origenTipo("SOLICITUD")
+                            .origenNombre(solicitud.getCodigoSeguimiento() + ": " + solicitud.getTitulo())
+                            .solicitudId(solicitud.getId())
+                            .build());
+                });
+            }
+        });
+
+        // 2. Obtener archivos de Documentos (de tipo FILE)
+        documentoRepository.findAll().forEach(documento -> {
+            if ("FILE".equalsIgnoreCase(documento.getTipo()) && documento.getVersiones() != null) {
+                documento.getVersiones().forEach(version -> {
+                    archivos.add(ArchivoDetalladoResponse.builder()
+                            .id(documento.getId() + "_" + version.getVersion())
+                            .nombreOriginal(version.getNombreOriginal())
+                            .nombreAlmacenado(version.getNombreAlmacenado())
+                            .tipoContenido(version.getTipoContenido())
+                            .tamanoBytes(version.getTamanoBytes())
+                            .subidoPor(version.getSubidoPor())
+                            .fechaSubida(version.getFechaSubida())
+                            .origenTipo("DOCUMENTO")
+                            .origenNombre(documento.getNombre())
+                            .documentoId(documento.getId())
+                            .solicitudId(documento.getSolicitudId())
+                            .build());
+                });
+            }
+        });
+
+        // Ordenar por fecha de subida descendente (más recientes primero)
+        archivos.sort((a, b) -> {
+            if (a.getFechaSubida() == null && b.getFechaSubida() == null) return 0;
+            if (a.getFechaSubida() == null) return 1;
+            if (b.getFechaSubida() == null) return -1;
+            return b.getFechaSubida().compareTo(a.getFechaSubida());
+        });
+
+        return ResponseEntity.ok(ApiResponse.ok("Listado de archivos consolidado", archivos));
+    }
+
+    /**
      * Descarga un archivo por su ID (nombre almacenado).
      */
     @GetMapping("/{archivoId}")
-    @Operation(summary = "Descargar/Visualizar archivo", description = "Obtiene un archivo adjunto por su ID. Por defecto lo sirve en modo inline a menos que se especifique download=true.")
-    public ResponseEntity<Resource> descargarArchivo(
-            @PathVariable String archivoId,
-            @RequestParam(value = "download", defaultValue = "false") boolean download) {
-        log.info("GET /api/v1/archivos/{} (download={})", archivoId, download);
+    @Operation(summary = "Descargar archivo", description = "Descarga un archivo adjunto por su ID.")
+    public ResponseEntity<Resource> descargarArchivo(@PathVariable String archivoId) {
+        log.info("GET /api/v1/archivos/{}", archivoId);
 
         // Search for file with any extension
         Resource resource = storageService.cargarArchivo(archivoId);
 
-        MediaType contentType = MediaTypeFactory.getMediaType(resource)
-                .orElse(MediaType.APPLICATION_OCTET_STREAM);
-
-        String disposition = download ? "attachment" : "inline";
-
         return ResponseEntity.ok()
-                .contentType(contentType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition + "; filename=\"" + resource.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
 

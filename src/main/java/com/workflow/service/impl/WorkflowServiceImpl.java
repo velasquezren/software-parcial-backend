@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -123,6 +124,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional
     public SolicitudResponse crearSolicitudConArchivos(CrearSolicitudRequest request, org.springframework.web.multipart.MultipartFile[] archivos, String usuarioCreador, RolUsuario rolUsuario) {
         // Validar que solo SOLICITANTE o ADMINISTRADOR pueden crear
         if (!rolUsuario.puedeCrearSolicitud()) {
@@ -224,6 +226,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     // ═══════════════════════════════════════════════════════════════
 
     @Override
+    @Transactional
     public SolicitudResponse cambiarEstado(String id, CambiarEstadoRequest request, String usuarioResponsable, RolUsuario rolUsuario, String departamentoUsuario) {
         SolicitudWorkflow solicitud = buscarSolicitudPorId(id);
         RolUsuario rol = rolUsuario;
@@ -362,6 +365,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
 
     @Override
+    @Transactional
     public SolicitudResponse reasignarDepartamento(
             String id,
             ReasignarDepartamentoRequest request,
@@ -650,8 +654,18 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    public SolicitudResponse asociarProcesoBpm(String id, String workflowDefinitionId, String tareaId, String tareaNombre, String usuarioResponsable, String rolUsuario) {
+    @Transactional
+    public SolicitudResponse asociarProcesoBpm(String id, String workflowDefinitionId, String tareaId, String tareaNombre, String usuarioResponsable, RolUsuario rolUsuario, String departamentoUsuario) {
         SolicitudWorkflow solicitud = buscarSolicitudPorId(id);
+        
+        // Validar que solo REVISOR o ADMINISTRADOR puedan realizar esta acción
+        if (!rolUsuario.puedeRevisar()) {
+            throw new UnauthorizedActionException(rolUsuario.name(), "asociar procesos BPMN");
+        }
+        
+        if (rolUsuario == RolUsuario.REVISOR) {
+            validarDepartamentoRevisor(solicitud, departamentoUsuario);
+        }
         
         solicitud.setWorkflowDefinitionId(workflowDefinitionId);
         solicitud.setTareaActualId(tareaId);
@@ -665,7 +679,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                 anterior,
                 EstadoWorkflow.EN_REVISION,
                 usuarioResponsable,
-                rolUsuario,
+                rolUsuario.name(),
                 comentario
         );
         
@@ -675,8 +689,18 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    public SolicitudResponse cambiarTareaBpm(String id, String flowId, String tareaId, String tareaNombre, String usuarioResponsable, String rolUsuario) {
+    @Transactional
+    public SolicitudResponse cambiarTareaBpm(String id, String flowId, String tareaId, String tareaNombre, String usuarioResponsable, RolUsuario rolUsuario, String departamentoUsuario) {
         SolicitudWorkflow solicitud = buscarSolicitudPorId(id);
+        
+        // Validar que solo REVISOR o ADMINISTRADOR puedan realizar esta acción
+        if (!rolUsuario.puedeRevisar()) {
+            throw new UnauthorizedActionException(rolUsuario.name(), "cambiar tareas BPMN");
+        }
+        
+        if (rolUsuario == RolUsuario.REVISOR) {
+            validarDepartamentoRevisor(solicitud, departamentoUsuario);
+        }
         
         String prevTareaNombre = solicitud.getTareaActualNombre();
         solicitud.setWorkflowDefinitionId(flowId); // <--- VINCULACIÓN CRUCIAL
@@ -690,7 +714,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                 solicitud.getEstado(),
                 solicitud.getEstado(),
                 usuarioResponsable,
-                rolUsuario,
+                rolUsuario.name(),
                 comentario
         );
         

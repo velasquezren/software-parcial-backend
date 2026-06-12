@@ -34,6 +34,7 @@ Thumbs.db
 # Local uploads and temp
 /uploads/
 /tmp/
+mongodb_data/
 
 # Logs
 logs/

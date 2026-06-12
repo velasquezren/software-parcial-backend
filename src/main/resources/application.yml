@@ -11,14 +11,14 @@ spring:
       max-request-size: 30MB
   data:
     mongodb:
-      uri: ${MONGO_URI:mongodb://localhost:27017/workflow_db}
+      uri: mongodb://localhost:27017/workflow_db
       auto-index-creation: true
   
   ai:
     vertex:
       ai:
         gemini:
-          project-id: ${GCP_PROJECT_ID:${VERTEX_AI_PROJECT_ID:}}
+          project-id: ${VERTEX_AI_PROJECT_ID:your-gcp-project-id}
           location: us-central1
           chat:
             options:
@@ -38,6 +38,8 @@ logging:
 app:
   uploads:
     dir: ./uploads
+  gcp:
+    bucket-name: ${GCS_BUCKET_NAME:parcial-2-software-bucket}
   cors:
     allowed-origins: http://localhost:4200
   firebase:
